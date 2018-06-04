@@ -3,7 +3,7 @@ const http = require('http')
 const { Server } = http
 
 const db = require('./db')
-const config = require('./config')
+const slack = require('./slack')
 
 const SLACK_COMMANDS = {
   LINK: '/link',
@@ -19,8 +19,8 @@ const handleSlackCommand = (command, data) =>
         } else {
           return db.saveLink(githubName, slackUserID)
             .then(
-              () => sendToSlack(`linked <@${slackUserID}> with ${githubName}@GitHub!`),
-              () => sendToSlack(`failed linking <@${slackUserID}> with ${githubName}@GitHub.`)
+              () => slack.send(`linked <@${slackUserID}> with ${githubName}@GitHub!`),
+              () => slack.send(`failed linking <@${slackUserID}> with ${githubName}@GitHub.`)
             )
             .then(resolve)
         }
@@ -50,41 +50,18 @@ const handleGitHubHook = (type, data) =>
           } = pullRequest
           const { login: reviewerGitHubName } = requestedReviewer
           return Promise.all(
-            [requesterGitHubName, reviewerGitHubName].map(db.readLink)
+            [requesterGitHubName, reviewerGitHubName].map(db.loadLink)
           )
             .then(
               ([requesterUserID, reviewerUserID]) =>
                 `${requesterGitHubName}(<@${requesterUserID}>) requested code review from ${reviewerGitHubName}(<@${reviewerUserID}>):\n${pullRequestURL}`
             )
-            .then(sendToSlack)
+            .then(slack.send)
             .then(resolve)
         }
       default:
         return resolve(data)
     }
-  })
-
-const formatForSlackAPI = content => JSON.stringify({ text: content })
-
-const sendToSlack = content =>
-  new Promise((resolve, reject) => {
-    const reqContent = formatForSlackAPI(content)
-    const options = {
-      ...config.slack.hook.URL,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(reqContent),
-      },
-    }
-    const req = https.request(options, res => {
-      res.on('data', () => {})
-      res.on('end', () => resolve())
-    })
-
-    req.on('error', reject)
-    req.write(reqContent)
-    req.end()
   })
 
 const getContentParser = req => {
