@@ -19,11 +19,11 @@ function load(ref) {
 }
 
 function saveLink(gitHubName, slackUserID) {
-  return save(`name-links/${githubName}`, slackUserID)
+  return save(`name-links/${gitHubName}`, slackUserID)
 }
 
-function loadLink(githubName) {
-  return load(`/name-links/${githubName}`)
+function loadLink(gitHubName) {
+  return load(`/name-links/${gitHubName}`)
 }
 
 module.exports = {
