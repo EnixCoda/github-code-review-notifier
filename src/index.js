@@ -34,11 +34,14 @@ const handleSlackCommand = (command, data) =>
 const GITHUB_EVENT_TYPES = {
   PULL_REQUEST: 'pull_request',
 }
+const GITHUB_EVENT_ACTION_TYPES = {
+  REVIEW_REQUESTED: 'review_requested',
+}
 const handleGitHubHook = (type, data) =>
   new Promise((resolve, reject) => {
     switch (type) {
       case GITHUB_EVENT_TYPES.PULL_REQUEST:
-        if (data.get('action') === 'review_requested') {
+        if (data.get('action') === GITHUB_EVENT_ACTION_TYPES.REVIEW_REQUESTED) {
           const pullRequest = data.get('pull_request')
           const requestedReviewer = data.get('requested_reviewer')
           const {
