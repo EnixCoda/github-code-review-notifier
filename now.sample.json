@@ -1,0 +1,6 @@
+{
+  "env": {
+    "FIREBASE": null,
+    "SLACK": null
+  }
+}
