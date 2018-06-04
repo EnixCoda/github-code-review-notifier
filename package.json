@@ -11,5 +11,8 @@
   "license": "ISC",
   "dependencies": {
     "firebase": "^5.0.4"
+  },
+  "devDependencies": {
+    "now-env": "^3.0.4"
   }
 }

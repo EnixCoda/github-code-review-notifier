@@ -1,7 +1,6 @@
 const firebase = require('firebase')
-const config = require('./config')
-
-firebase.initializeApp(config.firebase)
+const { firebaseConfig } = require('./config')
+firebase.initializeApp(firebaseConfig)
 
 function save(ref, value) {
   return firebase
