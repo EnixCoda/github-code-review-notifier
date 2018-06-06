@@ -17,12 +17,14 @@ function load(ref) {
     .then(snapshot => snapshot.val())
 }
 
+const linkDocument = 'name-links'
+
 function saveLink(gitHubName, slackUserID) {
-  return save(`name-links/${gitHubName}`, slackUserID)
+  return save(`/${linkDocument}/${gitHubName}`, slackUserID)
 }
 
 function loadLink(gitHubName) {
-  return load(`/name-links/${gitHubName}`)
+  return load(`/${linkDocument}/${gitHubName}`)
 }
 
 module.exports = {

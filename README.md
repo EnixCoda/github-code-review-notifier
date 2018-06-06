@@ -20,6 +20,7 @@ After adding the app into Slack workspace and setting up webhook on GitHub, user
 1. Customize your Slack workspace, create a Slack App with `Incoming Webhooks` and `Slash Commands` enabled. For the later one, its `name` should be set to `link`.
 
 1. Create a [firebase](https://firebase.google.com) App with real time database enabled. Find firebase config of your app from `Project Overview` - `Add Firebase to your web app`, convert the `config` into JSON.
+> Use firebase for storage. You can use any other methods you prefer. Modify src/db.js to achieve that.
 
 1. Set configs and deploy.
     ```
