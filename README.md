@@ -15,7 +15,7 @@ After adding the app into Slack workspace and setting up webhook on GitHub, user
 
 ## How to set up
 
-1. Add a Webhook in your GitHub repo.
+1. Add a Webhook in your GitHub repo (set content type to `application/json`).
 
 1. Customize your Slack workspace, create a Slack App with `Incoming Webhooks` and `Slash Commands` enabled. For the later one, its `name` should be set to `link`.
 
