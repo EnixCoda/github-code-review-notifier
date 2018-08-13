@@ -15,24 +15,27 @@ After adding the app into Slack workspace and setting up webhook on GitHub, user
 
 ## How to set up
 
-1. Add a Webhook in your GitHub repo (set content type to `application/json`).
+1. **GitHub webhook**
+    Add a Webhook in your GitHub repo (set the content type to `application/json`).
 
-1. Customize your Slack workspace, create a Slack App with `Incoming Webhooks` and `Slash Commands` enabled. For the later one, its `name` should be set to `link`.
+1. **Slack App**
+    [Customize your Slack workspace](https://api.slack.com/apps), create a Slack App with `Incoming Webhooks` and `Slash Commands` enabled. For the later one, its `name` should be set to `link`.
 
-1. Create a [firebase](https://firebase.google.com) App with real time database enabled. Find firebase config of your app from `Project Overview` - `Add Firebase to your web app`, convert the `config` into JSON.
-    > Use firebase for storage. You can use any other methods you prefer. Modify src/db.js to achieve that.
+1. **Storage**
+    Create a [firebase](https://firebase.google.com) App with real time database enabled. Find firebase config of your app from `Project Overview` - `Add Firebase to your web app`, convert the `config` into JSON.
+    > You can use any other platform you prefer. Modify `src/db.js` to achieve that.
 
-1. Set configs and deploy.
+1. **Config & Deploy**
+    Deploy this project so it can handle&send commands. [now.sh](https://now.sh) is quite fit to our needs.
+    Set `now secrets` for Firebase configs and Slack App `Incoming Webhooks` URL:
     ```
-    # I'd recommend now.sh (https://now.sh).
-    # set `now secrets` for Firebase configs and Slack App `Incoming Webhooks` URL.
     $ now secrets add SLACK "[the Incoming Webhooks URL you got at step 2]"
     $ now secrets add FIREBASE $(echo '[firebase config JSON string you got at step 3]' | base64)
     $ now --public
-
-    # If you'd like to deploy in other way, please set ENV according to `src/config.js`.
     ```
+    > You can deploy in other way. Please set ENV according to `src/config.js`.
 
-1. Set URL of GitHub webhook and Slack `Slash Commands` to the instance you just deployed.
+1. **Connect up**
+    Set URL of GitHub webhook and your Slack App's `Slash Commands` to the instance you just deployed.
 
-Done! Enjoy it!
+Done!
