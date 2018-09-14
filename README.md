@@ -25,7 +25,7 @@ After adding the app into Slack workspace and setting up webhook on GitHub, user
 
 1. **Storage**
 
-    Create a [firebase](https://firebase.google.com) App with real time database enabled. Find firebase config of your app from `Project Overview` - `Add Firebase to your web app`, convert the `config` into JSON.
+    Create a [firebase](https://firebase.google.com) App with real time database enabled. Find firebase config of your app from `Project Overview` - `Add Firebase to your web app`, convert the value of `config` variable into JSON: `{"apiKey": "..."}`.
     > You can use any other platform you prefer. Modify `src/db.js` to achieve that.
 
 1. **Config & Deploy**
