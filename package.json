@@ -1,18 +1,19 @@
 {
-  "name": "github-reviewer-notification-for-slack",
+  "name": "github-code-review-notifier",
   "version": "0.0.1",
   "description": "",
   "main": "src/index.js",
   "scripts": {
-    "start": "node ./src/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node ./src/index.js"
   },
-  "author": "",
+  "author": "EnixCoda",
   "license": "ISC",
-  "dependencies": {
-    "firebase": "^5.0.4"
+  "engines": {
+    "node": "10.x.x"
   },
-  "devDependencies": {
-    "now-env": "^3.0.4"
+  "dependencies": {
+    "firebase": "^5.0.4",
+    "now-env": "^3.0.4",
+    "slack": "^11.0.1"
   }
 }
