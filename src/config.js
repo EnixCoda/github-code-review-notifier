@@ -1,13 +1,14 @@
 require('now-env')
-const { FIREBASE, SLACK } = process.env
+const { FIREBASE, BOT_TOKEN, VERIFICATION_TOKEN } = process.env
+
+if (!FIREBASE) throw Error('missing Firebase')
+if (!BOT_TOKEN) throw Error('missing bot token')
+if (!VERIFICATION_TOKEN) throw Error('missing Slack App verification token')
 
 const firebaseConfig = JSON.parse(Buffer.from(FIREBASE, 'base64').toString())
-const slackEndpoint = {
-  hostname: SLACK.replace(/https?:\/\/(.*?)\/.*$/, '$1'),
-  path: SLACK.replace(/https?:\/\/.*?(\/.*)$/, '$1'),
-}
 
 module.exports = {
   firebaseConfig,
-  slackEndpoint,
+  botToken: BOT_TOKEN,
+  verificationToken: VERIFICATION_TOKEN,
 }
