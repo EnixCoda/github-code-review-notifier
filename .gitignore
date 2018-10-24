@@ -1,6 +1,6 @@
 .vscode
+.DS_Store
 node_modules
 tmp
 now.json
-
-.DS_Store
+now-secrets.json
