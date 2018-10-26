@@ -8,5 +8,5 @@
     "SIGNING_SECRET": "@signing_secret",
     "NODE_ENV": "production"
   },
-  "alias": "https://github-reviewer-notification-for-slack.now.sh"
+  "alias": "https://github-code-review-notifier.now.sh"
 }

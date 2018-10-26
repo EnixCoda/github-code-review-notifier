@@ -264,7 +264,7 @@ exports.openUnlinkDialog = openUnlinkDialog
 function handleOAuth(req, data) {
   const url = routes.getURL(req)
   const code = url.searchParams.get('code')
-  Slack.oauth
+  return Slack.oauth
     .access({
       client_secret: clientSecret,
       client_id: clientID,
@@ -275,18 +275,17 @@ function handleOAuth(req, data) {
         access_token: accessToken,
         team_id: workspace,
         bot: { bot_user_id: botID, bot_access_token: botToken },
-      }) => {
-        db.createWorkspace(workspace, { accessToken, botID, botToken }).then(
-          () => {
-            const webhook = generateWebhookURL(workspace)
-            // sendAsBot(botToken, ``, `Please paste this URL to your GitHub project.\n${webhook}`)
-          },
-          error => {
-            console.error(error)
-            // sendAsBot(botToken, ``, `Could not register workspace`)
-          }
-        )
-      }
+      }) =>
+        db
+          .createWorkspace(workspace, { accessToken, botID, botToken })
+          .then(
+            () =>
+              `Well done! GitHub Code Review Notifier have been added to your workspace. Check out @CodeReviewNotifier on Slack!`
+          )
     )
+    .catch(error => {
+      console.error(error)
+      return `Something went wrong :(`
+    })
 }
 exports.handleOAuth = handleOAuth
