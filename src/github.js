@@ -37,17 +37,18 @@ exports.handleGitHubHook = (req, data) => {
           html_url: pullRequestURL,
         } = pullRequest
         const { login: reviewerGitHubName } = requestedReviewer
-        return Promise.all(
-          [requesterGitHubName, reviewerGitHubName].map(githubName =>
+        return Promise.all([
+          db.loadWorkspace(workspace),
+          ...[requesterGitHubName, reviewerGitHubName].map(githubName =>
             db.loadLinks(workspace, { githubName }).then(links => links ? links[0].slack : null)
           )
-        ).then(([requesterUserID, reviewerUserID]) => {
+        ]).then(([{ botToken }, requesterUserID, reviewerUserID]) => {
           if (reviewerUserID) {
             const text = `${requesterGitHubName}(<@${requesterUserID}>) requested code review from ${reviewerGitHubName}(<@${reviewerUserID}>):\n${pullRequestURL}`
-            return sendAsBot(reviewerUserID, text)
+            return sendAsBot(botToken, reviewerUserID, text)
           } else if (requesterUserID) {
             const text = `Hi, I received your code review request but ${reviewerGitHubName} has not been linked to this workspace yet.`
-            return sendAsBot(requesterUserID, text)
+            return sendAsBot(botToken, requesterUserID, text)
           } else {
             console.log(`could not find users for`, requesterGitHubName, `and`, reviewerGitHubName)
           }

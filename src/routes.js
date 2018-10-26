@@ -1,10 +1,11 @@
-const { handleBotMessages, handleInteractiveComponents } = require('./bot')
+const { handleBotMessages, handleInteractiveComponents, handleOAuth } = require('./bot')
 const { handleGitHubHook } = require('./github')
 
 const paths = {
   GitHub: '/github',
   bot: '/bot',
   interactive: '/interactive-components',
+  oauth: '/oauth',
 }
 
 exports.paths = paths
@@ -29,5 +30,9 @@ exports.routes = [
   {
     match: (req, data) => matchPath(req, paths.GitHub),
     handler: handleGitHubHook,
+  },
+  {
+    match: (req, data) => matchPath(req, paths.oauth),
+    handler: handleOAuth,
   },
 ]

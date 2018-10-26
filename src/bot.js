@@ -1,31 +1,18 @@
 const Slack = require('slack')
 const uuid = require('uuid/v4')
 const db = require('./db')
-const { verificationToken, botToken } = require('./config')
+const { verificationToken, clientSecret, clientID } = require('./config')
 const routes = require('./routes')
 
 function generateWebhookURL(host, workspace) {
   return `https://${host}${routes.paths.GitHub}?workspace=${workspace}`
 }
 
-exports.registerWorkspace = function registerWorkspace(workspace) {
-  return db
-    .createWorkspace(workspace)
-    .then(() => generateWebhookURL(workspace))
-    .then(
-      webhook => {
-        sendAsBot(``, `Please paste this URL to your GitHub project.\n${webhook}`)
-      },
-      error => {
-        console.error(error)
-        sendAsBot(``, `Could not register workspace`)
-      }
-    )
-}
-
 exports.notifyRequest = function notifyRequest(workspace, githubName, pullRequestURL) {
   return db.loadLinks(workspace, { githubName }).then(slackNames => {
-    slackNames.forEach(slackName => Slack.send(workspace, slackName, `please review`, pullRequestURL))
+    slackNames.forEach(slackName =>
+      Slack.send(workspace, slackName, `please review`, pullRequestURL)
+    )
   })
 }
 
@@ -78,7 +65,7 @@ const handleMessage = async data => {
   return handleCommand(workspace, githubName, slackUserID, command)
 }
 
-const sendAsBot = (channel, text, extra) =>
+const sendAsBot = (botToken, channel, text, extra) =>
   Slack.chat
     .postMessage(Object.assign({ token: botToken, channel, text }, extra))
     .then(({ ok }) => ok)
@@ -122,18 +109,23 @@ exports.handleBotMessages = (req, data) => {
     return handleChallenge(data)
   }
   switch (data.event.subtype) {
-    case messageTypes.botMessage:
+    case messageTypes.botMessage: {
       console.log(`That is a bot message, ignoring.`)
       return
-    default:
-      return handleMessage(data).then(result => {
-        if (result === false) {
-          // in unknown format
-          return sendAsBot(data.event.channel, '', menuMessage)
-        } else {
-          return sendAsBot(data.event.channel, result)
-        }
-      })
+    }
+    default: {
+      const workspace = data.team_id
+      return handleMessage(data).then(result =>
+        db.loadWorkspace(workspace).then(({ botToken }) => {
+          if (result === false) {
+            // in unknown format
+            return sendAsBot(botToken, data.event.channel, '', menuMessage)
+          } else {
+            return sendAsBot(botToken, data.event.channel, result)
+          }
+        })
+      )
+    }
   }
 }
 
@@ -157,8 +149,14 @@ exports.handleInteractiveComponents = async (req, data) => {
               channel: { id: channel },
             } = payload
             const url = routes.getURL(req)
-            const webhook = generateWebhookURL(url.host, workspace);
-            sendAsBot(channel, `Please set up your project's webhook with this URL:\n${webhook}`)
+            const webhook = generateWebhookURL(url.host, workspace)
+            db.loadWorkspace(workspace).then(({ botToken }) =>
+              sendAsBot(
+                botToken,
+                channel,
+                `Please set up your project's webhook with this URL:\n${webhook}`
+              )
+            )
             return
           }
           case actions.link:
@@ -168,14 +166,24 @@ exports.handleInteractiveComponents = async (req, data) => {
               user: { id: slackUserID },
               channel: { id: channelID },
             } = payload
-            const links = await db.loadLinks(workspace, { slackUserID })
-            const githubNames = links ? links.map(({ github }) => github) : null
-            if (action === actions.unlink) {
-              if (!githubNames) sendAsBot(channelID, `Hi <@${slackUserID}>, you are not linked to any GitHub user yet.`)
-              else openUnlinkDialog(payload, githubNames).catch(console.error)
-            } else {
-              openLinkDialog(payload, githubNames).catch(console.error)
-            }
+            db.loadWorkspace(workspace).then(({ botToken }) => {
+              db.loadLinks(workspace, { slackUserID }).then(links => {
+                const githubNames = links ? links.map(({ github }) => github) : null
+                if (action === actions.unlink) {
+                  if (!githubNames)
+                    db.loadWorkspace(workspace).then(({ botToken }) =>
+                      sendAsBot(
+                        botToken,
+                        channelID,
+                        `Hi <@${slackUserID}>, you are not linked to any GitHub user yet.`
+                      )
+                    )
+                  else openUnlinkDialog(botToken, payload, githubNames).catch(console.error)
+                } else {
+                  openLinkDialog(botToken, payload, githubNames).catch(console.error)
+                }
+              })
+            })
           }
           default:
             break
@@ -191,7 +199,7 @@ exports.handleInteractiveComponents = async (req, data) => {
           submission: { github_name: githubName },
         } = payload
         handleCommand(workspace, githubName, slackUserID, command).then(text =>
-          sendAsBot(channel, text)
+          db.loadWorkspace(workspace).then(({ botToken }) => sendAsBot(botToken, channel, text))
         )
         // to complete an dialog, return 200 with empty body
         return
@@ -204,7 +212,7 @@ exports.handleInteractiveComponents = async (req, data) => {
   }
 }
 
-function openConnectDialog(payload, state, elements) {
+function openConnectDialog(botToken, payload, state, elements) {
   return Slack.dialog.open({
     token: botToken,
     trigger_id: payload.trigger_id,
@@ -218,24 +226,25 @@ function openConnectDialog(payload, state, elements) {
   })
 }
 
-function openLinkDialog(payload, githubNames) {
+function openLinkDialog(botToken, payload, githubNames) {
   const elements = [
     {
       label: `GitHub Username`,
       name: 'github_name',
       type: 'text',
       placeholder: 'your-github-username',
-      hint: githubNames && githubNames.length
-        ? `You have been linked to ${githubNames.join(', ')}. You can add more.`
-        : `Input your GitHub username here, you'll be notified on Slack when requested to review Pull Requests.`,
+      hint:
+        githubNames && githubNames.length
+          ? `You have been linked to ${githubNames.join(', ')}. You can add more.`
+          : `Input your GitHub username here, you'll be notified on Slack when requested to review Pull Requests.`,
       max_length: 24,
     },
   ]
-  return openConnectDialog(payload, actions.link, elements)
+  return openConnectDialog(botToken, payload, actions.link, elements)
 }
 exports.openLinkDialog = openLinkDialog
 
-function openUnlinkDialog(payload, githubNames) {
+function openUnlinkDialog(botToken, payload, githubNames) {
   const elements = [
     {
       label: `GitHub Username`,
@@ -245,9 +254,39 @@ function openUnlinkDialog(payload, githubNames) {
       options: githubNames.map(githubName => ({
         label: githubName,
         value: githubName,
-      }))
+      })),
     },
   ]
-  return openConnectDialog(payload, actions.unlink, elements)
+  return openConnectDialog(botToken, payload, actions.unlink, elements)
 }
 exports.openUnlinkDialog = openUnlinkDialog
+
+function handleOAuth(req, data) {
+  const url = routes.getURL(req)
+  const code = url.searchParams.get('code')
+  Slack.oauth
+    .access({
+      client_secret: clientSecret,
+      client_id: clientID,
+      code,
+    })
+    .then(
+      ({
+        access_token: accessToken,
+        team_id: workspace,
+        bot: { bot_user_id: botID, bot_access_token: botToken },
+      }) => {
+        db.createWorkspace(workspace, { accessToken, botID, botToken }).then(
+          () => {
+            const webhook = generateWebhookURL(workspace)
+            // sendAsBot(botToken, ``, `Please paste this URL to your GitHub project.\n${webhook}`)
+          },
+          error => {
+            console.error(error)
+            // sendAsBot(botToken, ``, `Could not register workspace`)
+          }
+        )
+      }
+    )
+}
+exports.handleOAuth = handleOAuth

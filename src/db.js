@@ -8,12 +8,19 @@ firebase.initializeApp(firebaseConfig)
  *
  * {
  *   registered: {
- *     [workspace]: true,
+ *     [workspace]: {
+ *       [keys.accessToken]: [accessToken],
+ *       [keys.botToken]: [botToken],
+ *       [keys.botID]: [botID],
+ *     },
  *   },
  *   link: {
- *     [workspace]: {
- *       [githubName]: [slackID],
- *     },
+ *     [workspace]: [
+ *       {
+ *         [keys.slackUserID]: [githubName],
+ *         [keys.githubName]: [slackID],
+ *       },
+ *     ],
  *   },
  * }
  */
@@ -23,6 +30,9 @@ const keys = {
   link: `link`,
   slackUserID: `slack`,
   githubName: `github`,
+  accessToken: `accessToken`,
+  botToken: `botToken`,
+  botID: `botID`,
 }
 
 const paths = {
@@ -46,12 +56,12 @@ function remove(ref) {
 }
 exports.remove = remove
 
-function load(ref) {
+function loadVal(ref) {
   return getRef(ref)
     .once('value')
     .then(snapshot => snapshot.val())
 }
-exports.load = load
+exports.load = loadVal
 
 function saveLink(workspace, { githubName, slackUserID }) {
   return getRef(paths.link(workspace))
@@ -111,13 +121,15 @@ function loadLinks(workspace, { githubName, slackUserID }) {
 }
 exports.loadLinks = loadLinks
 
-function createWorkspace(workspace) {
-  return load(paths.registered(workspace)).then(exist => {
-    if (exist) {
-      return true
-    } else {
-      return save(paths.registered(workspace), true).then(() => true)
-    }
+function loadWorkspace(workspace) {
+  return loadVal(paths.registered(workspace)).then(val => {
+    if (!val) throw null
+    return val
   })
+}
+exports.loadWorkspace = loadWorkspace
+
+function createWorkspace(workspace, { botID, botToken, accessToken }) {
+  return save(paths.registered(workspace), { botID, botToken, accessToken }).then(() => true)
 }
 exports.createWorkspace = createWorkspace
