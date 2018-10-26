@@ -1,9 +1,9 @@
 {
   "name": "github-code-review-notifier",
   "env": {
-    "FIREBASE": null,
-    "BOT_TOKEN": null,
-    "VERIFICATION_TOKEN": null,
+    "FIREBASE": "@firebase",
+    "BOT_TOKEN": "@bot_token",
+    "VERIFICATION_TOKEN": "@verification_token",
     "NODE_ENV": "production"
   },
   "alias": "https://github-reviewer-notification-for-slack.now.sh"
