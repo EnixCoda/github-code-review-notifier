@@ -5,6 +5,7 @@ const routes = require('./routes')
 const GITHUB_EVENT_HEADER_KEY = 'X-GitHub-Event'
 
 const GITHUB_EVENT_TYPES = {
+  PING: 'ping',
   PULL_REQUEST: 'pull_request',
 }
 
@@ -28,6 +29,8 @@ exports.handleGitHubHook = (req, data) => {
   const workspace = getWorkspace(req, data)
   const type = getHeader(req, GITHUB_EVENT_HEADER_KEY)
   switch (type) {
+    case GITHUB_EVENT_TYPES.PING:
+      return `I'm ready!`
     case GITHUB_EVENT_TYPES.PULL_REQUEST:
       if (data['action'] === GITHUB_EVENT_ACTION_TYPES.REVIEW_REQUESTED) {
         const pullRequest = data['pull_request']
