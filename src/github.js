@@ -25,7 +25,6 @@ exports.handleGitHubHook = (req, data) => {
   // handle application/x-www-form-urlencoded data
   if (data.payload) data = JSON.parse(data.payload)
 
-  console.log(JSON.stringify(data))
   const workspace = getWorkspace(req, data)
   const type = getHeader(req, GITHUB_EVENT_HEADER_KEY)
   switch (type) {
@@ -40,7 +39,7 @@ exports.handleGitHubHook = (req, data) => {
         const { login: reviewerGitHubName } = requestedReviewer
         return Promise.all(
           [requesterGitHubName, reviewerGitHubName].map(githubName =>
-            db.loadLink(workspace, { githubName })
+            db.loadLinks(workspace, { githubName }).then(links => links ? links[0].slack : null)
           )
         ).then(([requesterUserID, reviewerUserID]) => {
           if (reviewerUserID) {

@@ -14,6 +14,7 @@
   "dependencies": {
     "firebase": "^5.0.4",
     "now-env": "^3.0.4",
-    "slack": "^11.0.1"
+    "slack": "^11.0.1",
+    "uuid": "^3.3.2"
   }
 }

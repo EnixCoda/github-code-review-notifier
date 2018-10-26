@@ -1,5 +1,6 @@
-const db = require('./db')
 const Slack = require('slack')
+const uuid = require('uuid/v4')
+const db = require('./db')
 const { verificationToken, botToken } = require('./config')
 const routes = require('./routes')
 
@@ -23,8 +24,8 @@ exports.registerWorkspace = function registerWorkspace(workspace) {
 }
 
 exports.notifyRequest = function notifyRequest(workspace, githubName, pullRequestURL) {
-  return db.loadLink(workspace, { githubName }).then(slackName => {
-    Slack.send(workspace, slackName, `please review`, pullRequestURL)
+  return db.loadLinks(workspace, { githubName }).then(slackNames => {
+    slackNames.forEach(slackName => Slack.send(workspace, slackName, `please review`, pullRequestURL))
   })
 }
 
@@ -38,17 +39,23 @@ const messageTypes = {
   appMention: 'app_mention',
 }
 
+const actions = {
+  getWebhook: `get-webhook`,
+  link: `link`,
+  unlink: `unlink`,
+}
+
 const commandRegexp = /(link|unlink) ([\w-]+)/
 
 const handleCommand = (workspace, githubName, slackUserID, command) => {
   switch (command) {
-    case 'link':
-      return db.saveLink(workspace, githubName, slackUserID).then(succeeded => {
+    case actions.link:
+      return db.saveLink(workspace, { githubName, slackUserID }).then(succeeded => {
         if (succeeded) return `Linked <@${slackUserID}> to ${githubName}@GitHub!`
         else return `Sorry, could not link.`
       })
-    case 'unlink':
-      return db.removeLink(workspace, githubName, slackUserID).then(succeeded => {
+    case actions.unlink:
+      return db.removeLink(workspace, { githubName, slackUserID }).then(succeeded => {
         if (succeeded) return `Unlinked <@${slackUserID}> from ${githubName}@GitHub!`
         else return `Sorry, unlink failed.`
       })
@@ -78,8 +85,39 @@ const sendAsBot = (channel, text, extra) =>
 
 exports.sendAsBot = sendAsBot
 
+const menuMessage = {
+  attachments: [
+    {
+      text: 'Either link or unlink your Slack account with GitHub account.',
+      fallback: 'Something went wrong.',
+      callback_id: 'link_or_unlink',
+      color: '#3AA3E3',
+      attachment_type: 'default',
+      actions: [
+        {
+          text: 'Link',
+          type: 'button',
+          name: actions.link,
+          value: actions.link,
+        },
+        {
+          text: 'Unlink',
+          type: 'button',
+          name: actions.unlink,
+          value: actions.unlink,
+        },
+        {
+          text: 'Get webhook URL for GitHub',
+          type: 'button',
+          name: actions.getWebhook,
+          value: actions.getWebhook,
+        },
+      ],
+    },
+  ],
+}
+
 exports.handleBotMessages = (req, data) => {
-  console.log(JSON.stringify(data))
   if (data.type === 'url_verification') {
     return handleChallenge(data)
   }
@@ -91,37 +129,7 @@ exports.handleBotMessages = (req, data) => {
       return handleMessage(data).then(result => {
         if (result === false) {
           // in unknown format
-          return sendAsBot(data.event.channel, '', {
-            attachments: [
-              {
-                text: 'Either link or unlink your Slack account with GitHub account.',
-                fallback: 'Something went wrong.',
-                callback_id: 'link_or_unlink',
-                color: '#3AA3E3',
-                attachment_type: 'default',
-                actions: [
-                  {
-                    name: 'link',
-                    text: 'Link',
-                    type: 'button',
-                    value: 'link',
-                  },
-                  {
-                    name: 'unlink',
-                    text: 'Undo link',
-                    type: 'button',
-                    value: 'unlink',
-                  },
-                  {
-                    name: 'get-webhook',
-                    text: 'Get webhook URL for GitHub',
-                    type: 'button',
-                    value: 'get-webhook',
-                  },
-                ],
-              },
-            ],
-          })
+          return sendAsBot(data.event.channel, '', menuMessage)
         } else {
           return sendAsBot(data.event.channel, result)
         }
@@ -136,7 +144,6 @@ const types = {
 
 exports.handleInteractiveComponents = async (req, data) => {
   // either user clicked button, or confirmed dialog
-  console.log(JSON.stringify(data))
 
   if (data.payload) {
     const payload = JSON.parse(decodeURIComponent(data.payload))
@@ -144,7 +151,7 @@ exports.handleInteractiveComponents = async (req, data) => {
       case types.interactiveMessage: {
         const action = payload.actions[0].value
         switch (action) {
-          case 'get-webhook': {
+          case actions.getWebhook: {
             const {
               team: { id: workspace },
               channel: { id: channel },
@@ -154,49 +161,21 @@ exports.handleInteractiveComponents = async (req, data) => {
             sendAsBot(channel, `Please set up your project's webhook with this URL:\n${webhook}`)
             return
           }
-          case 'link':
-          case 'unlink': {
+          case actions.link:
+          case actions.unlink: {
             const {
               team: { id: workspace },
               user: { id: slackUserID },
+              channel: { id: channelID },
             } = payload
-            const githubName = await db.loadLink(workspace, { slackUserID })
-            Slack.dialog.open({
-              token: botToken,
-              trigger_id: payload.trigger_id,
-              dialog: {
-                callback_id: 'ryde-46e2b0',
-                title: 'Request a Ride',
-                submit_label: 'Request',
-                notify_on_cancel: true,
-                state: 'Limo',
-                elements: [
-                  {
-                    label: 'Action Type',
-                    name: 'action_type',
-                    type: 'select',
-                    value: action,
-                    options: [
-                      {
-                        label: 'Link',
-                        value: 'link',
-                      },
-                      {
-                        label: 'Unlink',
-                        value: 'unlink',
-                      },
-                    ],
-                  },
-                  {
-                    label: 'GitHub username',
-                    name: 'github_name',
-                    type: 'text',
-                    placeholder: 'your-github-username',
-                    value: githubName,
-                  },
-                ],
-              },
-            })
+            const links = await db.loadLinks(workspace, { slackUserID })
+            const githubNames = links ? links.map(({ github }) => github) : null
+            if (action === actions.unlink) {
+              if (!githubNames) sendAsBot(channelID, `Hi <@${slackUserID}>, you are not linked to any GitHub user yet.`)
+              else openUnlinkDialog(payload, githubNames).catch(console.error)
+            } else {
+              openLinkDialog(payload, githubNames).catch(console.error)
+            }
           }
           default:
             break
@@ -205,10 +184,11 @@ exports.handleInteractiveComponents = async (req, data) => {
       }
       case types.dialogSubmission: {
         const {
+          state: command,
           team: { id: workspace },
           channel: { id: channel },
           user: { id: slackUserID },
-          submission: { action_type: command, github_name: githubName },
+          submission: { github_name: githubName },
         } = payload
         handleCommand(workspace, githubName, slackUserID, command).then(text =>
           sendAsBot(channel, text)
@@ -223,3 +203,51 @@ exports.handleInteractiveComponents = async (req, data) => {
     console.log(`no payload detected`)
   }
 }
+
+function openConnectDialog(payload, state, elements) {
+  return Slack.dialog.open({
+    token: botToken,
+    trigger_id: payload.trigger_id,
+    dialog: {
+      callback_id: uuid(),
+      title: 'Link to GitHub, or undo',
+      submit_label: 'Submit',
+      state,
+      elements,
+    },
+  })
+}
+
+function openLinkDialog(payload, githubNames) {
+  const elements = [
+    {
+      label: `GitHub Username`,
+      name: 'github_name',
+      type: 'text',
+      placeholder: 'your-github-username',
+      hint: githubNames && githubNames.length
+        ? `You have been linked to ${githubNames.join(', ')}. You can add more.`
+        : `Input your GitHub username here, you'll be notified on Slack when requested to review Pull Requests.`,
+      max_length: 24,
+    },
+  ]
+  return openConnectDialog(payload, actions.link, elements)
+}
+exports.openLinkDialog = openLinkDialog
+
+function openUnlinkDialog(payload, githubNames) {
+  const elements = [
+    {
+      label: `GitHub Username`,
+      hint: 'Which GitHub user would you like to unlink?',
+      name: 'github_name',
+      type: 'select',
+      options: githubNames.map(githubName => ({
+        label: githubName,
+        value: githubName,
+      }))
+    },
+  ]
+  return openConnectDialog(payload, actions.unlink, elements)
+}
+exports.openUnlinkDialog = openUnlinkDialog

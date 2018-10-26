@@ -35,8 +35,8 @@ const getRequestBody = (req) => {
 
 const handleData = (req, data) => {
   const route = routes.find(({ match }) => match(req, data))
+  console.log(JSON.stringify(data))
   if (!route) {
-    console.log(JSON.stringify(data))
     throw Error(`unknown request type`)
   }
   return route.handler(req, data)
