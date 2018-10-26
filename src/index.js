@@ -1,119 +1,62 @@
-const https = require('https')
 const http = require('http')
 const { Server } = http
 
-const db = require('./db')
-const slack = require('./slack')
-
-const SLACK_COMMANDS = {
-  LINK: '/link',
-}
-const handleSlackCommand = (command, data) =>
-  new Promise((resolve, reject) => {
-    switch (command) {
-      case SLACK_COMMANDS.LINK: {
-        const slackUserID = (data.get('user_id') || '').trim()
-        const githubName = (data.get('text') || '').trim()
-        if (!slackUserID || !githubName) {
-          return reject()
-        } else {
-          return db.saveLink(githubName, slackUserID)
-            .then(
-              () => slack.send(`linked <@${slackUserID}> with ${githubName}@GitHub!`),
-              () => slack.send(`failed linking <@${slackUserID}> with ${githubName}@GitHub.`)
-            )
-            .then(resolve)
-        }
-      }
-
-      default:
-        return resolve(data)
-    }
-  })
-
-const GITHUB_EVENT_TYPES = {
-  PULL_REQUEST: 'pull_request',
-}
-const GITHUB_EVENT_ACTION_TYPES = {
-  REVIEW_REQUESTED: 'review_requested',
-}
-const handleGitHubHook = (type, data) =>
-  new Promise((resolve, reject) => {
-    switch (type) {
-      case GITHUB_EVENT_TYPES.PULL_REQUEST:
-        if (data.get('action') === GITHUB_EVENT_ACTION_TYPES.REVIEW_REQUESTED) {
-          const pullRequest = data.get('pull_request')
-          const requestedReviewer = data.get('requested_reviewer')
-          const {
-            user: { login: requesterGitHubName },
-            html_url: pullRequestURL,
-          } = pullRequest
-          const { login: reviewerGitHubName } = requestedReviewer
-          return Promise.all(
-            [requesterGitHubName, reviewerGitHubName].map(db.loadLink)
-          )
-            .then(
-              ([requesterUserID, reviewerUserID]) =>
-                `${requesterGitHubName}(<@${requesterUserID}>) requested code review from ${reviewerGitHubName}(<@${reviewerUserID}>):\n${pullRequestURL}`
-            )
-            .then(slack.send)
-            .then(resolve)
-        }
-      default:
-        return resolve(data)
-    }
-  })
+const { routes } = require('./routes')
 
 const getContentParser = req => {
   switch (req.headers['content-type']) {
     case 'application/x-www-form-urlencoded':
-      return rawData =>
-        new Map(
-          rawData
-            .split('&')
-            .map(pair => pair.split('='))
-            .map(pair => pair.map(decodeURIComponent))
-        )
+      return rawData => rawData
+        .split('&')
+        .map(pair => pair.split('='))
+        .map(pair => pair.map(decodeURIComponent))
+        .reduce((merged, [key, value]) => {
+          merged[key] = value
+          return merged
+        }, {})
     case 'application/json':
-      return rawData => new Map(Object.entries(JSON.parse(rawData)))
+      return JSON.parse
     default:
-      return () => new Map()
+      return _ => _
   }
 }
 
-const GITHUB_EVENT_HEADER_KEY = 'X-GitHub-Event'
-
-const getHeader = (header, key) => header[key] || header[key.toLowerCase()]
+const getRequestBody = (req) => {
+  return new Promise((resolve, reject) => {
+    const bodyBuffer = []
+    req.on('data', data => bodyBuffer.push(data.toString()))
+    req.on('end', async () => {
+      const body = bodyBuffer.join('')
+      resolve(body)
+    })
+    req.on('error', reject)
+  })
+}
 
 const handleData = (req, data) => {
-  try {
-    const gitHubEventType = getHeader(req.headers, GITHUB_EVENT_HEADER_KEY)
-    if (gitHubEventType) {
-      // event from GitHub
-      return handleGitHubHook(gitHubEventType, data)
-    }
-
-    const slackCommandType = data.get('command')
-    if (slackCommandType) {
-      // command from Slack
-      return handleSlackCommand(slackCommandType, data)
-    }
-  } catch (err) {
-    return 'oops, something went wrong.'
+  const route = routes.find(({ match }) => match(req, data))
+  console.log(JSON.stringify(data))
+  if (!route) {
+    throw Error(`unknown request type`)
   }
+  return route.handler(req, data)
 }
 
-const requestHandler = (req, res) => {
-  const bodyBuffer = []
-  req.on('data', data => bodyBuffer.push(data.toString()))
-  req.on('end', () => {
-    const body = bodyBuffer.join('')
+const requestHandler = async (req, res) => {
+  try {
+    const body = await getRequestBody(req)
     const parser = getContentParser(req)
     const data = parser(body)
-    Promise.resolve(handleData(req, data))
-      .then(r => JSON.stringify(r))
-      .then(r => res.end(r))
-  })
+    const result = await handleData(req, data)
+    res.writeHead(200, {
+      'Content-type': `application/json`,
+    })
+    res.end(result ? JSON.stringify(result) : undefined)
+  } catch(err) {
+    console.error(err)
+    res.writeHead(400)
+    res.end(String(err))
+  }
 }
 
 const server = Server(requestHandler)
