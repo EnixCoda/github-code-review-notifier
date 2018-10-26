@@ -38,7 +38,7 @@ const handleCommand = (workspace, githubName, slackUserID, command) => {
   switch (command) {
     case actions.link:
       return db.saveLink(workspace, { githubName, slackUserID }).then(succeeded => {
-        if (succeeded) return `Linked <@${slackUserID}> to ${githubName}@GitHub!`
+        if (succeeded) return `Linked <@${slackUserID}> to ${githubName}@GitHub, congrats!`
         else return `Sorry, could not link.`
       })
     case actions.unlink:
@@ -75,26 +75,26 @@ exports.sendAsBot = sendAsBot
 const menuMessage = {
   attachments: [
     {
-      text: 'Either link or unlink your Slack account with GitHub account.',
+      text: 'Hi there! I can do these for you, check them out!',
       fallback: 'Something went wrong.',
       callback_id: 'link_or_unlink',
       color: '#3AA3E3',
       attachment_type: 'default',
       actions: [
         {
-          text: 'Link',
+          text: 'Link to a GitHub account',
           type: 'button',
           name: actions.link,
           value: actions.link,
         },
         {
-          text: 'Unlink',
+          text: 'Undo link',
           type: 'button',
           name: actions.unlink,
           value: actions.unlink,
         },
         {
-          text: 'Get webhook URL for GitHub',
+          text: 'Get GitHub webhook URL',
           type: 'button',
           name: actions.getWebhook,
           value: actions.getWebhook,
