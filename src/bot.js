@@ -212,13 +212,13 @@ exports.handleInteractiveComponents = async (req, data) => {
   }
 }
 
-function openConnectDialog(botToken, payload, state, elements) {
+function openConnectDialog(botToken, payload, state, title, elements) {
   return Slack.dialog.open({
     token: botToken,
     trigger_id: payload.trigger_id,
     dialog: {
       callback_id: uuid(),
-      title: 'Link to GitHub, or undo',
+      title,
       submit_label: 'Submit',
       state,
       elements,
@@ -240,7 +240,7 @@ function openLinkDialog(botToken, payload, githubNames) {
       max_length: 24,
     },
   ]
-  return openConnectDialog(botToken, payload, actions.link, elements)
+  return openConnectDialog(botToken, payload, actions.link, `Link to GitHub`, elements)
 }
 exports.openLinkDialog = openLinkDialog
 
@@ -257,7 +257,7 @@ function openUnlinkDialog(botToken, payload, githubNames) {
       })),
     },
   ]
-  return openConnectDialog(botToken, payload, actions.unlink, elements)
+  return openConnectDialog(botToken, payload, actions.unlink, `Undo link`, elements)
 }
 exports.openUnlinkDialog = openUnlinkDialog
 
