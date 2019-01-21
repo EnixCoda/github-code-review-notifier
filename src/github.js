@@ -43,14 +43,23 @@ exports.handleGitHubHook = (req, data) => {
         return Promise.all([
           db.loadWorkspace(workspace),
           ...[requesterGitHubName, reviewerGitHubName].map(githubName =>
-            db.loadLinks(workspace, { githubName }).then(links => links ? links[0].slack : null)
-          )
+            db.loadLinks(workspace, { githubName }).then(links => (links ? links[0].slack : null))
+          ),
         ]).then(([{ botToken }, requesterUserID, reviewerUserID]) => {
-          if (reviewerUserID) {
+          if (reviewerUserID && requesterUserID) {
+            // both registered
             const text = `${requesterGitHubName}(<@${requesterUserID}>) requested code review from ${reviewerGitHubName}(<@${reviewerUserID}>):\n${pullRequestURL}`
+            return Promise.all([
+              sendAsBot(botToken, requesterUserID, text),
+              sendAsBot(botToken, reviewerUserID, text),
+            ])
+          } else if (reviewerUserID) {
+            // only reviewer registered
+            let text = `${requesterGitHubName}(<@${requesterUserID}>) requested code review from ${reviewerGitHubName}(<@${reviewerUserID}>):\n${pullRequestURL}\n\nPS: ${requesterGitHubName} has not been linked yet. If he/she is in this Slack workspace, please introduce this app to!`
             return sendAsBot(botToken, reviewerUserID, text)
           } else if (requesterUserID) {
-            const text = `Hi, I received your code review request but ${reviewerGitHubName} has not been linked to this workspace yet.`
+            // only requestor registered
+            let text = `${requesterGitHubName}(<@${requesterUserID}>) requested code review from ${reviewerGitHubName}(<@${reviewerUserID}>):\n${pullRequestURL}\n\nPS: ${reviewerGitHubName} has not been linked yet. If he/she is in this Slack workspace, please introduce this app to!`
             return sendAsBot(botToken, requesterUserID, text)
           } else {
             console.log(`could not find users for`, requesterGitHubName, `and`, reviewerGitHubName)
