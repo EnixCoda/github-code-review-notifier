@@ -2,10 +2,11 @@ const Slack = require('slack')
 const uuid = require('uuid/v4')
 const db = require('./db')
 const { verificationToken, clientSecret, clientID } = require('./config')
-const routes = require('./routes')
+const { getURL } = require('./')
+const { paths } = require('./routes/index')
 
 function generateWebhookURL(host, workspace) {
-  return `https://${host}${routes.paths.GitHub}?workspace=${workspace}`
+  return `https://${host}${paths.GitHub}?workspace=${workspace}`
 }
 
 exports.notifyRequest = function notifyRequest(workspace, githubName, pullRequestURL) {
@@ -110,7 +111,6 @@ exports.handleBotMessages = (req, data) => {
   }
   switch (data.event.subtype) {
     case messageTypes.botMessage: {
-      console.log(`That is a bot message, ignoring.`)
       return
     }
     default: {
@@ -134,7 +134,7 @@ const types = {
   interactiveMessage: `interactive_message`,
 }
 
-exports.handleInteractiveComponents = async (req, data) => {
+async function handleInteractiveComponents(req, data) {
   // either user clicked button, or confirmed dialog
 
   if (data.payload) {
@@ -148,7 +148,7 @@ exports.handleInteractiveComponents = async (req, data) => {
               team: { id: workspace },
               channel: { id: channel },
             } = payload
-            const url = routes.getURL(req)
+            const url = getURL(req)
             const webhook = generateWebhookURL(url.host, workspace)
             db.loadWorkspace(workspace).then(({ botToken }) =>
               sendAsBot(
@@ -211,6 +211,7 @@ exports.handleInteractiveComponents = async (req, data) => {
     console.log(`no payload detected`)
   }
 }
+exports.handleInteractiveComponents = handleInteractiveComponents
 
 function openConnectDialog(botToken, payload, state, title, elements) {
   return Slack.dialog.open({
@@ -262,7 +263,7 @@ function openUnlinkDialog(botToken, payload, githubNames) {
 exports.openUnlinkDialog = openUnlinkDialog
 
 function handleOAuth(req, data) {
-  const url = routes.getURL(req)
+  const url = getURL(req)
   const code = url.searchParams.get('code')
   return Slack.oauth
     .access({

@@ -1,19 +1,20 @@
-const http = require('http')
-const { Server } = http
+const getURL = req => new URL(`https://${req.headers.host}${req.url}`)
+exports.getURL = getURL
 
-const { routes } = require('./routes')
+const wwwFormParser = body =>
+  body
+    .split('&')
+    .map(pair => pair.split('='))
+    .map(pair => pair.map(decodeURIComponent))
+    .reduce((merged, [key, value]) => {
+      merged[key] = value
+      return merged
+    }, {})
 
 const getContentParser = req => {
   switch (req.headers['content-type']) {
     case 'application/x-www-form-urlencoded':
-      return rawData => rawData
-        .split('&')
-        .map(pair => pair.split('='))
-        .map(pair => pair.map(decodeURIComponent))
-        .reduce((merged, [key, value]) => {
-          merged[key] = value
-          return merged
-        }, {})
+      return wwwFormParser
     case 'application/json':
       return JSON.parse
     default:
@@ -21,7 +22,7 @@ const getContentParser = req => {
   }
 }
 
-const getRequestBody = (req) => {
+const getRequestBody = req => {
   return new Promise((resolve, reject) => {
     const bodyBuffer = []
     req.on('data', data => bodyBuffer.push(data.toString()))
@@ -33,35 +34,23 @@ const getRequestBody = (req) => {
   })
 }
 
-const handleData = (req, data) => {
-  const route = routes.find(({ match }) => match(req, data))
-  console.log(JSON.stringify(data))
-  if (!route) {
-    throw Error(`unknown request type`)
-  }
-  return route.handler(req, data)
+async function parseContent(req) {
+  const body = await getRequestBody(req)
+  const parser = getContentParser(req)
+  const data = parser(body)
+  return data
 }
 
-const requestHandler = async (req, res) => {
+const requestHandler = handler => async (req, res) => {
   try {
-    const body = await getRequestBody(req)
-    const parser = getContentParser(req)
-    const data = parser(body)
-    const result = await handleData(req, data)
-    res.writeHead(200, {
-      'Content-type': `application/json`,
-    })
+    const data = await parseContent(req)
+    const result = await handler(req, data)
     res.end(result ? JSON.stringify(result) : undefined)
-  } catch(err) {
+  } catch (err) {
     console.error(err)
     res.writeHead(400)
     res.end(String(err))
   }
 }
 
-const server = Server(requestHandler)
-
-const port = 8899
-server.listen(port, () => {
-  console.log('server listening at port', server.address().port)
-})
+exports.requestHandler = requestHandler
