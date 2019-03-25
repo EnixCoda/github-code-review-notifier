@@ -8,9 +8,6 @@
   },
   "author": "EnixCoda",
   "license": "ISC",
-  "engines": {
-    "node": "10.x.x"
-  },
   "dependencies": {
     "firebase": "^5.0.4",
     "now-env": "^3.0.4",
