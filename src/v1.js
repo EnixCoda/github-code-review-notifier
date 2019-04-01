@@ -3,7 +3,7 @@ const { Server } = http
 const { routes } = require('./routes/index')
 
 function matchRoute(routes, req) {
-  return routes.find(route => route.path.startsWith(req.url))
+  return routes.find(route => route.path.startsWith(req.url.split('?')[0]))
 }
 
 const server = Server((req, res) => {
