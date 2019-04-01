@@ -1,0 +1,15 @@
+{
+  "action": "submitted",
+  "review": {
+    "user": {
+      "login": "EnixCoda"
+    },
+    "state": "commented",
+    "html_url": "https://github.com/EnixCoda/github-code-review-notifier/pull/4"
+  },
+  "pull_request": {
+    "user": {
+      "login": "diartyz"
+    }
+  }
+}
