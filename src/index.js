@@ -54,3 +54,5 @@ const requestHandler = handler => async (req, res) => {
 }
 
 exports.requestHandler = requestHandler
+
+require('./v1')
