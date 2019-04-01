@@ -2,23 +2,10 @@
   "name": "github-code-review-notifier",
   "version": 2,
   "builds": [
-    { "src": "src/routes/github.js", "use": "@now/node", "config": { "maxLambdaSize": "6mb" } },
-    { "src": "src/routes/bot.js", "use": "@now/node", "config": { "maxLambdaSize": "6mb" } },
-    {
-      "src": "src/routes/interactive.js",
-      "use": "@now/node",
-      "config": { "maxLambdaSize": "6mb" }
-    },
-    { "src": "src/routes/oauth.js", "use": "@now/node", "config": { "maxLambdaSize": "6mb" } }
+    { "src": "src/routes/test.js", "use": "@now/node", "config": { "maxLambdaSize": "6mb" } },
+    { "src": "src/routes/bot.js", "use": "@now/node", "config": { "maxLambdaSize": "6mb" } }
   ],
   "routes": [
-    {
-      "src": "/github",
-      "dest": "src/routes/github.js",
-      "headers": {
-        "Content-type": "application/json"
-      }
-    },
     {
       "src": "/bot",
       "dest": "src/routes/bot.js",
@@ -27,15 +14,8 @@
       }
     },
     {
-      "src": "/interactive",
-      "dest": "src/routes/interactive.js",
-      "headers": {
-        "Content-type": "application/json"
-      }
-    },
-    {
-      "src": "/oauth",
-      "dest": "src/routes/oauth.js",
+      "src": "/test",
+      "dest": "src/routes/test.js",
       "headers": {
         "Content-type": "application/json"
       }

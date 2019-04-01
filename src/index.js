@@ -45,6 +45,7 @@ const requestHandler = handler => async (req, res) => {
   try {
     const data = await parseContent(req)
     const result = await handler(req, data)
+    res.writeHead(200)
     res.end(result ? JSON.stringify(result) : undefined)
   } catch (err) {
     console.error(err)
