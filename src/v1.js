@@ -3,7 +3,12 @@ const { Server } = http
 const { routes } = require('./routes/index')
 
 function matchRoute(routes, req) {
-  return routes.find(route => route.path.startsWith(req.url.split('?')[0]))
+  // remove any char after last '/' or '?'
+  const match = route => {
+    const path = req.url.replace(/(.*?)\/?\?.*/, '$1')
+    return route.path.startsWith(path)
+  }
+  return routes.find(match)
 }
 
 const server = Server((req, res) => {
