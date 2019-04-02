@@ -89,7 +89,7 @@ exports.handleGitHubHook = (req, data) => {
             ),
           ]).then(([{ botToken }, requesterUserID, reviewerUserID]) => {
             const text = `Hi, ${requesterGitHubName}(<@${requesterUserID}>), new code review from ${reviewerGitHubName}(<@${reviewerUserID}>):\n${reviewUrl}`
-            const linkNotify = githubName => `\n\nPS: ${gitHubName} has not been linked yet. If he/she is in this Slack workspace, please introduce this app to!`
+            const linkNotify = githubName => `\n\nPS: ${githubName} has not been linked yet. If he/she is in this Slack workspace, please introduce this app to!`
             if (requesterUserID && reviewerUserID) {
               return Promise.all([
                 sendAsBot(botToken, requesterUserID, text),
