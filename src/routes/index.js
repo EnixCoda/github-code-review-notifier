@@ -1,8 +1,3 @@
-const bot = require('./bot')
-const github = require('./github')
-const interactive = require('./interactive')
-const oauth = require('./oauth')
-
 const paths = {
   GitHub: '/github',
   bot: '/bot',
@@ -11,6 +6,11 @@ const paths = {
 }
 
 exports.paths = paths
+
+const bot = require('./bot')
+const github = require('./github')
+const interactive = require('./interactive')
+const oauth = require('./oauth')
 
 exports.routes = [
   {
