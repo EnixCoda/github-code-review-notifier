@@ -82,14 +82,15 @@ exports.handleGitHubHook = (req, data) => {
               user: { login: reviewerGitHubName },
             },
           } = data
+          if (requesterGitHubName === reviewerGitHubName) return
           return Promise.all([
             db.loadWorkspace(workspace),
             ...[requesterGitHubName, reviewerGitHubName].map(githubName =>
               db.loadLinks(workspace, { githubName }).then(links => (links ? links[0].slack : null))
             ),
           ]).then(([{ botToken }, requesterUserID, reviewerUserID]) => {
-            const text = `Hi, ${requesterGitHubName}(<@${requesterUserID}>), new code review from ${reviewerGitHubName}(<@${reviewerUserID}>):\n${reviewUrl}`
-            const linkNotify = githubName => `\n\nPS: ${githubName} has not been linked yet. If he/she is in this Slack workspace, please introduce this app to!`
+            const text = `${requesterGitHubName}(<@${requesterUserID}>)'s PR is code reviewed by ${reviewerGitHubName}(<@${reviewerUserID}>):\n${reviewUrl}`
+            const linkNotify = githubName => `\n\nPS: ${gitHubName} has not been linked yet. If he/she is in this Slack workspace, please introduce this app to!`
             if (requesterUserID && reviewerUserID) {
               return Promise.all([
                 sendAsBot(botToken, requesterUserID, text),
