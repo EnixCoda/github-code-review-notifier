@@ -1,6 +1,6 @@
 const db = require('./db')
 const { sendAsBot } = require('./bot')
-const routes = require('./routes')
+const { getURL } = require('./')
 
 const GITHUB_EVENT_HEADER_KEY = 'X-GitHub-Event'
 
@@ -18,7 +18,7 @@ const GITHUB_EVENT_ACTION_TYPES = {
 const getHeader = (req, key) => req.headers && (req.headers[key] || req.headers[key.toLowerCase()])
 
 const getWorkspace = (req, data) => {
-  const url = routes.getURL(req)
+  const url = getURL(req)
   const workspace = url.searchParams.get('workspace')
   if (!workspace) throw Error(`no workspace provided`)
   return workspace
