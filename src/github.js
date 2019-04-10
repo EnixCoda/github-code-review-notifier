@@ -113,11 +113,14 @@ exports.handleGitHubHook = (req, data) => {
               }
             } else {
               // review message
-              const text = `${requesterGitHubName}(<@${requesterUserID}>)'s pull request has been reviewed by ${reviewerGitHubName}(<@${reviewerUserID}>)\n${reviewUrl}`
-              const linkNotify = gitHubName =>
-                `\n\nNote: ${gitHubName} has not been linked yet. If he/she is in this Slack workspace, please introduce this app to!`
               if (requesterUserID) {
-                return sendAsBot(botToken, requesterUserID, text + linkNotify(reviewerGitHubName))
+                let text = `${requesterGitHubName}(<@${requesterUserID}>)'s pull request has been reviewed by ${reviewerGitHubName}(<@${reviewerUserID}>)\n${reviewUrl}`
+                if (!reviewerUserID) {
+                  const linkNotify = gitHubName =>
+                    `\n\nNote: ${gitHubName} has not been linked yet. If he/she is in this Slack workspace, please introduce this app to!`
+                  text += linkNotify(reviewerGitHubName)
+                }
+                return sendAsBot(botToken, requesterUserID, text)
               } else if (reviewerUserID) {
                 // we could ask reviewer to introduce this app to PR requester here, but not now
               } else {
