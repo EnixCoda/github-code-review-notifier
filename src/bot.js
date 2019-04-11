@@ -68,7 +68,7 @@ const handleMessage = async data => {
 
 const sendAsBot = (botToken, channel, text, extra) =>
   Slack.chat
-    .postMessage(Object.assign({ token: botToken, channel, text }, extra))
+    .postMessage(Object.assign({ as_user: true, token: botToken, channel, text }, extra))
     .then(({ ok }) => ok)
 
 exports.sendAsBot = sendAsBot
