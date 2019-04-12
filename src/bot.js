@@ -116,8 +116,11 @@ exports.handleBotMessages = (req, data) => {
     default: {
       const workspace = data.team_id
       return handleMessage(data).then(result =>
-        db.loadWorkspace(workspace).then(({ botToken }) => {
-          if (result === false) {
+        db.loadWorkspace(workspace).then(({ botToken, botID }) => {
+          if (botID === data.event.user) {
+            // ignore bot message
+            return
+          } else if (result === false) {
             // in unknown format
             return sendAsBot(botToken, data.event.channel, '', menuMessage)
           } else {
