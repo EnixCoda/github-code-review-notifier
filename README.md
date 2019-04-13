@@ -22,7 +22,7 @@ When requested to review pull request on GitHub or when your pull request has be
 
 3. Click `Get webhook URL for GitHub` in the menu, and create a webhook with it in your GitHub projects.
 
-> Multiple projects can share one URL.
+> Multiple projects can share one URL in a workspace.
 > [How to create GitHub webhook?](https://developer.github.com/webhooks/creating/)
 
 4. Click `Link` from menu to link your accounts. Only linked users will get notifications. So don't forget to tell your team about this tool.
