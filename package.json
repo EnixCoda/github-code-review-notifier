@@ -3,15 +3,15 @@
   "version": "0.0.1",
   "description": "",
   "main": "build/index.js",
-  "scripts": {
-    "build": "tsc"
-  },
   "author": "EnixCoda",
   "license": "ISC",
   "engines": {
     "node": "8.x.x"
   },
   "dependencies": {
+    "@now/node": "^1.0.0",
+    "@types/http-proxy": "^1.17.0",
+    "@types/uuid": "^3.4.5",
     "firebase": "^5.0.4",
     "http-proxy": "^1.17.0",
     "now-env": "^3.0.4",

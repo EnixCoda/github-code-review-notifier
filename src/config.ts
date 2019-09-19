@@ -1,5 +1,3 @@
-import 'now-env'
-
 const {
   FIREBASE,
   BOT_TOKEN,

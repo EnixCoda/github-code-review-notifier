@@ -26,7 +26,7 @@ const getWorkspace = (req: IncomingMessage) => {
   return workspace
 }
 
-export const handleGitHubHook: RouteHandler = (req, data) => {
+export const handleGitHubHook: RouteHandler = async (req, data) => {
   // handle application/x-www-form-urlencoded data
   if (data.payload) data = JSON.parse(data.payload)
 
@@ -44,30 +44,29 @@ export const handleGitHubHook: RouteHandler = (req, data) => {
           html_url: pullRequestURL,
         } = pullRequest
         const { login: reviewerGitHubName } = requestedReviewer
-        return Promise.all([
+        const [{ botToken }, requesterUserID, reviewerUserID] = await Promise.all([
           db.loadWorkspace(workspace),
           gitHubNameToSlackID(workspace, requesterGitHubName),
           gitHubNameToSlackID(workspace, reviewerGitHubName),
-        ]).then(([{ botToken }, requesterUserID, reviewerUserID]) => {
-          if (reviewerUserID && requesterUserID) {
-            // both registered
-            const text = `${requesterGitHubName}(<@${requesterUserID}>) requested code review from ${reviewerGitHubName}(<@${reviewerUserID}>):\n${pullRequestURL}`
-            return Promise.all([
-              sendAsBot(botToken, requesterUserID, text),
-              sendAsBot(botToken, reviewerUserID, text),
-            ]).then(() => true)
-          } else if (reviewerUserID) {
-            // only reviewer registered
-            let text = `${requesterGitHubName}(<@${requesterUserID}>) requested code review from ${reviewerGitHubName}(<@${reviewerUserID}>):\n${pullRequestURL}\n\nNote: ${requesterGitHubName} has not been linked yet. If he/she is in this Slack workspace, please introduce this app to them!`
-            return sendAsBot(botToken, reviewerUserID, text)
-          } else if (requesterUserID) {
-            // only requestor registered
-            let text = `${requesterGitHubName}(<@${requesterUserID}>) requested code review from ${reviewerGitHubName}(<@${reviewerUserID}>):\n${pullRequestURL}\n\nNote: ${reviewerGitHubName} has not been linked yet. If he/she is in this Slack workspace, please introduce this app to them!`
-            return sendAsBot(botToken, requesterUserID, text)
-          } else {
-            console.log(`could not find users for`, requesterGitHubName, `and`, reviewerGitHubName)
-          }
-        })
+        ])
+        if (reviewerUserID && requesterUserID) {
+          // both registered
+          const text = `${requesterGitHubName}(<@${requesterUserID}>) requested code review from ${reviewerGitHubName}(<@${reviewerUserID}>):\n${pullRequestURL}`
+          return Promise.all([
+            sendAsBot(botToken, requesterUserID, text),
+            sendAsBot(botToken, reviewerUserID, text),
+          ]).then(() => true)
+        } else if (reviewerUserID) {
+          // only reviewer registered
+          let text = `${requesterGitHubName}(<@${requesterUserID}>) requested code review from ${reviewerGitHubName}(<@${reviewerUserID}>):\n${pullRequestURL}\n\nNote: ${requesterGitHubName} has not been linked yet. If he/she is in this Slack workspace, please introduce this app to them!`
+          return sendAsBot(botToken, reviewerUserID, text)
+        } else if (requesterUserID) {
+          // only requestor registered
+          let text = `${requesterGitHubName}(<@${requesterUserID}>) requested code review from ${reviewerGitHubName}(<@${reviewerUserID}>):\n${pullRequestURL}\n\nNote: ${reviewerGitHubName} has not been linked yet. If he/she is in this Slack workspace, please introduce this app to them!`
+          return sendAsBot(botToken, requesterUserID, text)
+        } else {
+          console.log(`could not find users for`, requesterGitHubName, `and`, reviewerGitHubName)
+        }
       } else {
         return 'unresolved action'
       }
@@ -88,46 +87,45 @@ export const handleGitHubHook: RouteHandler = (req, data) => {
             // self comment, ignore
             return
           }
-          return Promise.all([
+          const [{ botToken }, requesterUserID, reviewerUserID] = await Promise.all([
             db.loadWorkspace(workspace),
             gitHubNameToSlackID(workspace, requesterGitHubName),
             gitHubNameToSlackID(workspace, reviewerGitHubName),
-          ]).then(([{ botToken }, requesterUserID, reviewerUserID]) => {
-            if (!requesterUserID && !reviewerUserID) {
-              console.log(
-                `Could not find user for neither ${requesterGitHubName} nor ${reviewerGitHubName}`,
+          ])
+          if (!requesterUserID && !reviewerUserID) {
+            console.log(
+              `Could not find user for neither ${requesterGitHubName} nor ${reviewerGitHubName}`,
+            )
+          }
+          if (state === 'approved') {
+            // approvement message, notify requestor
+            if (requesterUserID) {
+              return sendAsBot(
+                botToken,
+                requesterUserID,
+                `Your pull request has been approved!\n${reviewUrl}`,
               )
-            }
-            if (state === 'approved') {
-              // approvement message, notify requestor
-              if (requesterUserID) {
-                return sendAsBot(
-                  botToken,
-                  requesterUserID,
-                  `Your pull request has been approved!\n${reviewUrl}`,
-                )
-              } else if (reviewerUserID) {
-                // we could ask reviewer to introduce this app to PR requester here, but not now
-              } else {
-                throw new Error('impossible')
-              }
+            } else if (reviewerUserID) {
+              // we could ask reviewer to introduce this app to PR requester here, but not now
             } else {
-              // review message
-              if (requesterUserID) {
-                let text = `${requesterGitHubName}(<@${requesterUserID}>)'s pull request has been reviewed by ${reviewerGitHubName}(<@${reviewerUserID}>)\n${reviewUrl}`
-                if (!reviewerUserID) {
-                  const linkNotify = (gitHubName: string) =>
-                    `\n\nNote: ${gitHubName} has not been linked yet. If he/she is in this Slack workspace, please introduce this app to them!`
-                  text += linkNotify(reviewerGitHubName)
-                }
-                return sendAsBot(botToken, requesterUserID, text)
-              } else if (reviewerUserID) {
-                // we could ask reviewer to introduce this app to PR requester here, but not now
-              } else {
-                throw new Error('impossible')
-              }
+              throw new Error('impossible')
             }
-          })
+          } else {
+            // review message
+            if (requesterUserID) {
+              let text = `${requesterGitHubName}(<@${requesterUserID}>)'s pull request has been reviewed by ${reviewerGitHubName}(<@${reviewerUserID}>)\n${reviewUrl}`
+              if (!reviewerUserID) {
+                const linkNotify = (gitHubName: string) =>
+                  `\n\nNote: ${gitHubName} has not been linked yet. If he/she is in this Slack workspace, please introduce this app to them!`
+                text += linkNotify(reviewerGitHubName)
+              }
+              return sendAsBot(botToken, requesterUserID, text)
+            } else if (reviewerUserID) {
+              // we could ask reviewer to introduce this app to PR requester here, but not now
+            } else {
+              throw new Error('impossible')
+            }
+          }
         default:
           return 'unresolved action'
       }

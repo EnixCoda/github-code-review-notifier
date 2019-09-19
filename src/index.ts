@@ -1,9 +1,10 @@
-import { IncomingMessage, RequestListener } from 'http'
+import { IncomingMessage, RequestListener } from '../extra'
 
 export type Route = {
   path: string
   handler?: RequestListener
 }
+
 export type RouteHandler<T = ExpectedAny> = (
   req: IncomingMessage,
   data: ExpectedAny,

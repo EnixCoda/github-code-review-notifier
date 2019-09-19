@@ -1,9 +1,9 @@
 import * as Slack from 'slack'
 import uuid from 'uuid/v4'
+import { paths } from '../api/paths'
 import { getURL, RouteHandler } from './'
 import { clientID, clientSecret, verificationToken } from './config'
 import * as db from './db'
-import { paths } from './routes/index'
 
 function generateWebhookURL(host: string, workspace: string) {
   return `https://${host}${paths.GitHub}?workspace=${workspace}`
@@ -118,17 +118,16 @@ export const handleBotMessages: RouteHandler<{
     default: {
       const workspace = data.team_id
       const result = await handleMessage(req, data)
-      return db.loadWorkspace(workspace).then(({ botToken, botID }) => {
-        if (botID === data.event.user) {
-          // ignore bot message
-          return
-        } else if (result === false) {
-          // in unknown format
-          return sendAsBot(botToken, data.event.channel, '', menuMessage)
-        } else {
-          return sendAsBot(botToken, data.event.channel, result)
-        }
-      })
+      const { botToken, botID } = await db.loadWorkspace(workspace)
+      if (botID === data.event.user) {
+        // ignore bot message
+        return
+      } else if (result === false) {
+        // in unknown format
+        return sendAsBot(botToken, data.event.channel, '', menuMessage)
+      } else {
+        return sendAsBot(botToken, data.event.channel, result)
+      }
     }
   }
 }

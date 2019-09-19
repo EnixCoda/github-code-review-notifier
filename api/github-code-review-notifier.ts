@@ -1,5 +1,5 @@
-import { RequestListener } from 'http'
-import { proxy } from './proxy'
+import { RequestListener } from '../extra'
+import { proxy } from '../src/proxy'
 
 export const handleAsset: RequestListener = function handleAsset(req, res) {
   proxy.web(req, res, {
@@ -7,3 +7,5 @@ export const handleAsset: RequestListener = function handleAsset(req, res) {
     target: 'https://enixcoda.github.io/',
   })
 }
+
+export default handleAsset
