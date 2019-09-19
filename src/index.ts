@@ -1,29 +1,49 @@
-export const getURL = req => new URL(`https://${req.headers.host}${req.url}`)
+import { IncomingMessage, RequestListener } from 'http'
 
-const wwwFormParser = body =>
+export type Route = {
+  path: string
+  handler?: RequestListener
+}
+export type RouteHandler<T = ExpectedAny> = (
+  req: IncomingMessage,
+  data: ExpectedAny,
+) => Promise<T> | T
+
+export const getURL = (req: IncomingMessage) => new URL(`https://${req.headers.host}${req.url}`)
+
+const wwwFormParser = (body: string) =>
   body
     .split('&')
     .map(pair => pair.split('='))
     .map(pair => pair.map(decodeURIComponent))
-    .reduce((merged, [key, value]) => {
-      merged[key] = value
-      return merged
-    }, {})
+    .reduce(
+      (merged, [key, value]) => {
+        if (key in merged) {
+          if (Array.isArray(merged[key])) (merged[key] as string[]).push(value)
+          else merged[key] = [merged[key] as string, value]
+        } else merged[key] = value
 
-const getContentParser = req => {
+        return merged
+      },
+      {} as {
+        [key: string]: string | string[]
+      },
+    )
+
+const getContentParser = (req: IncomingMessage) => {
   switch (req.headers['content-type']) {
     case 'application/x-www-form-urlencoded':
       return wwwFormParser
     case 'application/json':
       return JSON.parse
     default:
-      return _ => _
+      return <T>(_: T) => _
   }
 }
 
-const getRequestBody = req => {
-  return new Promise((resolve, reject) => {
-    const bodyBuffer = []
+const getRequestBody = (req: IncomingMessage) => {
+  return new Promise<string>((resolve, reject) => {
+    const bodyBuffer: string[] = []
     req.on('data', data => bodyBuffer.push(data.toString()))
     req.on('end', async () => {
       const body = bodyBuffer.join('')
@@ -33,14 +53,17 @@ const getRequestBody = req => {
   })
 }
 
-async function parseContent(req) {
+async function parseContent(req: IncomingMessage) {
   const body = await getRequestBody(req)
   const parser = getContentParser(req)
   const data = parser(body)
   return data
 }
 
-export const requestHandler = handler => async (req, res) => {
+export const requestHandler: (handler: RouteHandler) => RequestListener = handler => async (
+  req,
+  res,
+) => {
   try {
     const data = await parseContent(req)
     const result = await handler(req, data)

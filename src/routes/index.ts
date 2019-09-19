@@ -7,6 +7,7 @@ export const paths = {
   githubAssets: '/github-code-review-notifier', // asset path prefix on GitHub pages
 }
 
+import { Route } from '..'
 import bot from './bot'
 import github from './github'
 import interactive from './interactive'
@@ -20,7 +21,7 @@ export const assetRoute = {
   path: paths.githubAssets,
 }
 
-export const routes = [
+export const routes: Route[] = [
   {
     path: paths.GitHub,
     handler: github,

@@ -3,28 +3,6 @@ import { firebaseConfig } from './config'
 
 firebase.initializeApp(firebaseConfig)
 
-/**
- * database schema
- *
- * {
- *   registered: {
- *     [workspace]: {
- *       [keys.accessToken]: [accessToken],
- *       [keys.botToken]: [botToken],
- *       [keys.botID]: [botID],
- *     },
- *   },
- *   link: {
- *     [workspace]: [
- *       {
- *         [keys.slackUserID]: [githubName],
- *         [keys.githubName]: [slackID],
- *       },
- *     ],
- *   },
- * }
- */
-
 const keys = {
   registered: `registered`,
   link: `link`,
@@ -35,91 +13,96 @@ const keys = {
   botID: `botID`,
 }
 
-export const paths = {
+export const paths: {
+  [key: string]: (seed: string) => string
+} = {
   registered: workspace => `${keys.registered}/${workspace}`,
   link: workspace => `${keys.link}/${workspace}`,
 }
 
-function getRef(ref) {
+type RefSeed = string
+
+function getRef(ref: RefSeed) {
   return firebase.database().ref(ref)
 }
 
-export function save(ref, value) {
+export function save<T>(ref: RefSeed, value: T) {
   return getRef(ref).set(value)
 }
 
-export function remove(ref) {
+export function remove(ref: RefSeed) {
   return getRef(ref).remove()
 }
 
-function loadVal(ref) {
+export function load<T>(ref: RefSeed) {
   return getRef(ref)
     .once('value')
-    .then(snapshot => snapshot.val())
+    .then(snapshot => snapshot.val() as T | null)
 }
-export const load = loadVal
 
-export function saveLink(workspace, { githubName, slackUserID }) {
+export function saveLink(workspace: string, { github, slack }: GSLink) {
   return getRef(paths.link(workspace))
     .push({
-      [keys.slackUserID]: slackUserID,
-      [keys.githubName]: githubName,
+      [keys.slackUserID]: slack,
+      [keys.githubName]: github,
     })
     .then(() => true)
-    .catch(err => {
-      console.error(err)
-      return false
-    })
 }
 
-function genLinkQuery(workspace, { githubName, slackUserID }) {
-  let key, value
-  if (githubName) {
-    key = keys.githubName
-    value = githubName
-  } else if (slackUserID) {
-    key = keys.slackUserID
-    value = slackUserID
-  } else throw Error(`cannot load link without githubName and slackUserID`)
-
+function getGitHubLinkQuery(workspace: string, { github }: Pick<GSLink, 'github'>) {
   return getRef(paths.link(workspace))
-    .orderByChild(key)
-    .equalTo(value)
+    .orderByChild(keys.githubName)
+    .equalTo(github)
 }
 
-export function removeLink(workspace, { githubName, slackUserID }) {
-  return genLinkQuery(workspace, { githubName, slackUserID })
+function getSlackLinkQuery(workspace: string, { slack }: Pick<GSLink, 'slack'>) {
+  return getRef(paths.link(workspace))
+    .orderByChild(keys.slackUserID)
+    .equalTo(slack)
+}
+
+export function removeLink(workspace: string, { github }: Pick<GSLink, 'github'>) {
+  return getGitHubLinkQuery(workspace, { github })
     .limitToFirst(1)
     .once('value')
     .then(snapshot => {
       if (snapshot.exists()) {
-        return snapshot.forEach(child =>
-          child.ref
-            .remove()
-            .then(() => true)
-            .catch(err => {
-              console.error(err)
-              return false
-            }),
-        )
+        return snapshot.forEach(child => {
+          child.ref.remove().then(() => true)
+        })
       }
       return true
     })
 }
 
-export function loadLinks(workspace, { githubName, slackUserID }) {
-  return genLinkQuery(workspace, { githubName, slackUserID })
-    .once('value')
-    .then(snapshot => (snapshot.exists() ? Object.values(snapshot.val()) : null))
+export function loadLinks(workspace: string, { github, slack }: Partial<GSLink>) {
+  let ref
+  if (github) {
+    ref = getGitHubLinkQuery(workspace, { github })
+  } else if (slack) {
+    ref = getSlackLinkQuery(workspace, { slack })
+  } else {
+    throw new Error('')
+  }
+  return ref.once('value').then(snapshot =>
+    snapshot.exists()
+      ? Object.values(snapshot.val() as {
+          [key: string]: GSLink
+        })
+      : null,
+  )
 }
 
-export function loadWorkspace(workspace) {
-  return loadVal(paths.registered(workspace)).then(val => {
-    if (!val) throw null
+export function loadWorkspace(workspace: string) {
+  return load<WorkspaceMeta>(paths.registered(workspace)).then(val => {
+    if (!val) throw new Error(`cannot find workspace "${workspace}"`)
     return val
   })
 }
 
-export function createWorkspace(workspace, { botID, botToken, accessToken }) {
+export function createWorkspace(
+  workspace: string,
+  { botID, botToken, accessToken }: WorkspaceMeta,
+) {
   return save(paths.registered(workspace), { botID, botToken, accessToken }).then(() => true)
 }

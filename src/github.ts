@@ -1,6 +1,7 @@
-import { getURL } from './'
+import { IncomingMessage } from 'http'
+import { getURL, RouteHandler } from './'
 import { sendAsBot } from './bot'
-import db from './db'
+import * as db from './db'
 
 const GITHUB_EVENT_HEADER_KEY = 'X-GitHub-Event'
 
@@ -15,16 +16,17 @@ const GITHUB_EVENT_ACTION_TYPES = {
   SUBMITTED: 'submitted',
 }
 
-const getHeader = (req, key) => req.headers && (req.headers[key] || req.headers[key.toLowerCase()])
+const getHeader = (req: IncomingMessage, key: string) =>
+  req.headers && (req.headers[key] || req.headers[key.toLowerCase()])
 
-const getWorkspace = (req, data) => {
+const getWorkspace = (req: IncomingMessage, data: ExpectedAny) => {
   const url = getURL(req)
   const workspace = url.searchParams.get('workspace')
   if (!workspace) throw Error(`no workspace provided`)
   return workspace
 }
 
-export const handleGitHubHook = (req, data) => {
+export const handleGitHubHook: RouteHandler = (req, data) => {
   // handle application/x-www-form-urlencoded data
   if (data.payload) data = JSON.parse(data.payload)
 
@@ -44,9 +46,8 @@ export const handleGitHubHook = (req, data) => {
         const { login: reviewerGitHubName } = requestedReviewer
         return Promise.all([
           db.loadWorkspace(workspace),
-          ...[requesterGitHubName, reviewerGitHubName].map(githubName =>
-            db.loadLinks(workspace, { githubName }).then(links => (links ? links[0].slack : null)),
-          ),
+          gitHubNameToSlackID(workspace, requesterGitHubName),
+          gitHubNameToSlackID(workspace, reviewerGitHubName),
         ]).then(([{ botToken }, requesterUserID, reviewerUserID]) => {
           if (reviewerUserID && requesterUserID) {
             // both registered
@@ -54,7 +55,7 @@ export const handleGitHubHook = (req, data) => {
             return Promise.all([
               sendAsBot(botToken, requesterUserID, text),
               sendAsBot(botToken, reviewerUserID, text),
-            ])
+            ]).then(() => true)
           } else if (reviewerUserID) {
             // only reviewer registered
             let text = `${requesterGitHubName}(<@${requesterUserID}>) requested code review from ${reviewerGitHubName}(<@${reviewerUserID}>):\n${pullRequestURL}\n\nNote: ${requesterGitHubName} has not been linked yet. If he/she is in this Slack workspace, please introduce this app to them!`
@@ -89,11 +90,8 @@ export const handleGitHubHook = (req, data) => {
           }
           return Promise.all([
             db.loadWorkspace(workspace),
-            ...[requesterGitHubName, reviewerGitHubName].map(githubName =>
-              db
-                .loadLinks(workspace, { githubName })
-                .then(links => (links ? links[0].slack : null)),
-            ),
+            gitHubNameToSlackID(workspace, requesterGitHubName),
+            gitHubNameToSlackID(workspace, reviewerGitHubName),
           ]).then(([{ botToken }, requesterUserID, reviewerUserID]) => {
             if (!requesterUserID && !reviewerUserID) {
               console.log(
@@ -118,7 +116,7 @@ export const handleGitHubHook = (req, data) => {
               if (requesterUserID) {
                 let text = `${requesterGitHubName}(<@${requesterUserID}>)'s pull request has been reviewed by ${reviewerGitHubName}(<@${reviewerUserID}>)\n${reviewUrl}`
                 if (!reviewerUserID) {
-                  const linkNotify = gitHubName =>
+                  const linkNotify = (gitHubName: string) =>
                     `\n\nNote: ${gitHubName} has not been linked yet. If he/she is in this Slack workspace, please introduce this app to them!`
                   text += linkNotify(reviewerGitHubName)
                 }
@@ -137,4 +135,9 @@ export const handleGitHubHook = (req, data) => {
       if (!type) throw Error(`no github event header provided`)
       return `no handler for this event type`
   }
+}
+function gitHubNameToSlackID(workspace: string, githubName: string): Promise<string | null> {
+  return db
+    .loadLinks(workspace, { github: githubName })
+    .then(links => (links ? links[0].slack : null))
 }

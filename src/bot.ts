@@ -1,23 +1,15 @@
-import Slack from 'slack'
+import * as Slack from 'slack'
 import uuid from 'uuid/v4'
-import { getURL } from './'
+import { getURL, RouteHandler } from './'
 import { clientID, clientSecret, verificationToken } from './config'
-import db from './db'
+import * as db from './db'
 import { paths } from './routes/index'
 
-function generateWebhookURL(host, workspace) {
+function generateWebhookURL(host: string, workspace: string) {
   return `https://${host}${paths.GitHub}?workspace=${workspace}`
 }
 
-export function notifyRequest(workspace, githubName, pullRequestURL) {
-  return db.loadLinks(workspace, { githubName }).then(slackNames => {
-    slackNames.forEach(slackName =>
-      Slack.send(workspace, slackName, `please review`, pullRequestURL),
-    )
-  })
-}
-
-const handleChallenge = data => {
+const handleChallenge: RouteHandler = (req, data) => {
   if (data.token !== verificationToken) throw Error('wrong verification token')
   return { challenge: data.challenge }
 }
@@ -35,15 +27,20 @@ const actions = {
 
 const commandRegexp = /(link|unlink) ([\w-]+)/
 
-const handleCommand = (workspace, githubName, slackUserID, command) => {
+const handleCommand = (
+  workspace: string,
+  githubName: string,
+  slackUserID: string,
+  command: string,
+) => {
   switch (command) {
     case actions.link:
-      return db.saveLink(workspace, { githubName, slackUserID }).then(succeeded => {
+      return db.saveLink(workspace, { github: githubName, slack: slackUserID }).then(succeeded => {
         if (succeeded) return `Linked <@${slackUserID}> to ${githubName}@GitHub, congrats!`
         else return `Sorry, could not link.`
-      })
+      }) as Promise<string>
     case actions.unlink:
-      return db.removeLink(workspace, { githubName, slackUserID }).then(succeeded => {
+      return db.removeLink(workspace, { github: githubName }).then(succeeded => {
         if (succeeded) return `Unlinked <@${slackUserID}> from ${githubName}@GitHub!`
         else return `Sorry, unlink failed.`
       })
@@ -52,7 +49,7 @@ const handleCommand = (workspace, githubName, slackUserID, command) => {
   }
 }
 
-const handleMessage = async data => {
+const handleMessage: RouteHandler<string | false> = async function(req, data) {
   const text = data.event.text
   // not simple text message
   if (typeof text === undefined) return false
@@ -63,10 +60,15 @@ const handleMessage = async data => {
   const [, command, githubName] = matched
   const workspace = data.team_id
   const slackUserID = data.event.user
-  return handleCommand(workspace, githubName, slackUserID, command)
+  return await handleCommand(workspace, githubName, slackUserID, command)
 }
 
-export const sendAsBot = (botToken, channel, text, extra) =>
+export const sendAsBot = (
+  botToken: string,
+  channel: string,
+  text: string,
+  extra?: Partial<Chat.PostMessage.Params>,
+) =>
   Slack.chat
     .postMessage(Object.assign({ as_user: true, token: botToken, channel, text }, extra))
     .then(({ ok }) => ok)
@@ -103,9 +105,11 @@ const menuMessage = {
   ],
 }
 
-export const handleBotMessages = (req, data) => {
+export const handleBotMessages: RouteHandler<{
+  challenge: string
+}> = async (req, data) => {
   if (data.type === 'url_verification') {
-    return handleChallenge(data)
+    return handleChallenge(req, data)
   }
   switch (data.event.subtype) {
     case messageTypes.botMessage: {
@@ -113,19 +117,18 @@ export const handleBotMessages = (req, data) => {
     }
     default: {
       const workspace = data.team_id
-      return handleMessage(data).then(result =>
-        db.loadWorkspace(workspace).then(({ botToken, botID }) => {
-          if (botID === data.event.user) {
-            // ignore bot message
-            return
-          } else if (result === false) {
-            // in unknown format
-            return sendAsBot(botToken, data.event.channel, '', menuMessage)
-          } else {
-            return sendAsBot(botToken, data.event.channel, result)
-          }
-        }),
-      )
+      const result = await handleMessage(req, data)
+      return db.loadWorkspace(workspace).then(({ botToken, botID }) => {
+        if (botID === data.event.user) {
+          // ignore bot message
+          return
+        } else if (result === false) {
+          // in unknown format
+          return sendAsBot(botToken, data.event.channel, '', menuMessage)
+        } else {
+          return sendAsBot(botToken, data.event.channel, result)
+        }
+      })
     }
   }
 }
@@ -135,7 +138,10 @@ const types = {
   interactiveMessage: `interactive_message`,
 }
 
-export async function handleInteractiveComponents(req, data) {
+export const handleInteractiveComponents: RouteHandler = async function handleInteractiveComponents(
+  req,
+  data,
+) {
   // either user clicked button, or confirmed dialog
 
   if (data.payload) {
@@ -168,7 +174,7 @@ export async function handleInteractiveComponents(req, data) {
               channel: { id: channelID },
             } = payload
             db.loadWorkspace(workspace).then(({ botToken }) => {
-              db.loadLinks(workspace, { slackUserID }).then(links => {
+              db.loadLinks(workspace, { slack: slackUserID }).then(links => {
                 const githubNames = links ? links.map(({ github }) => github) : null
                 if (action === actions.unlink) {
                   if (!githubNames)
@@ -181,7 +187,8 @@ export async function handleInteractiveComponents(req, data) {
                     )
                   else openUnlinkDialog(botToken, payload, githubNames).catch(console.error)
                 } else {
-                  openLinkDialog(botToken, payload, githubNames).catch(console.error)
+                  if (githubNames)
+                    openLinkDialog(botToken, payload, githubNames).catch(console.error)
                 }
               })
             })
@@ -213,7 +220,13 @@ export async function handleInteractiveComponents(req, data) {
   }
 }
 
-function openConnectDialog(botToken, payload, state, title, elements) {
+function openConnectDialog(
+  botToken: string,
+  payload: SlackPayload,
+  state: string,
+  title: string,
+  elements: SlackElement,
+) {
   return Slack.dialog.open({
     token: botToken,
     trigger_id: payload.trigger_id,
@@ -227,30 +240,30 @@ function openConnectDialog(botToken, payload, state, title, elements) {
   })
 }
 
-export function openLinkDialog(botToken, payload, githubNames) {
+export function openLinkDialog(botToken: string, payload: SlackPayload, githubNames: string[]) {
   const elements = [
     {
       label: `GitHub Username`,
       name: 'github_name',
       type: 'text',
-      placeholder: 'your-github-username',
       hint:
         githubNames && githubNames.length
           ? `You have been linked to ${githubNames.join(', ')}. You can add more.`
           : `Input your GitHub username here, you'll be notified on Slack when requested to review Pull Requests.`,
+      placeholder: 'your-github-username',
       max_length: 24,
     },
   ]
   return openConnectDialog(botToken, payload, actions.link, `Link to GitHub`, elements)
 }
 
-export function openUnlinkDialog(botToken, payload, githubNames) {
+export function openUnlinkDialog(botToken: string, payload: SlackPayload, githubNames: string[]) {
   const elements = [
     {
       label: `GitHub Username`,
-      hint: 'Which GitHub user would you like to unlink?',
       name: 'github_name',
       type: 'select',
+      hint: 'Which GitHub user would you like to unlink?',
       options: githubNames.map(githubName => ({
         label: githubName,
         value: githubName,
@@ -260,7 +273,7 @@ export function openUnlinkDialog(botToken, payload, githubNames) {
   return openConnectDialog(botToken, payload, actions.unlink, `Undo link`, elements)
 }
 
-export function handleOAuth(req, data) {
+export const handleOAuth: RouteHandler = function handleOAuth(req, data) {
   const url = getURL(req)
   const code = url.searchParams.get('code')
   return Slack.oauth
