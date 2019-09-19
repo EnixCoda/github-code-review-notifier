@@ -19,7 +19,7 @@ const GITHUB_EVENT_ACTION_TYPES = {
 const getHeader = (req: IncomingMessage, key: string) =>
   req.headers && (req.headers[key] || req.headers[key.toLowerCase()])
 
-const getWorkspace = (req: IncomingMessage, data: ExpectedAny) => {
+const getWorkspace = (req: IncomingMessage) => {
   const url = getURL(req)
   const workspace = url.searchParams.get('workspace')
   if (!workspace) throw Error(`no workspace provided`)
@@ -30,7 +30,7 @@ export const handleGitHubHook: RouteHandler = (req, data) => {
   // handle application/x-www-form-urlencoded data
   if (data.payload) data = JSON.parse(data.payload)
 
-  const workspace = getWorkspace(req, data)
+  const workspace = getWorkspace(req)
   const type = getHeader(req, GITHUB_EVENT_HEADER_KEY)
   switch (type) {
     case GITHUB_EVENT_TYPES.PING:
