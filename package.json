@@ -9,7 +9,7 @@
   "author": "EnixCoda",
   "license": "ISC",
   "engines": {
-    "node": "10.x.x"
+    "node": "8.x.x"
   },
   "dependencies": {
     "firebase": "^5.0.4",
