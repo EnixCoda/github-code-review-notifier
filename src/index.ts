@@ -74,5 +74,3 @@ export const requestHandler: (handler: RouteHandler) => RequestListener = handle
     res.end(String(err))
   }
 }
-
-require('./v1')
