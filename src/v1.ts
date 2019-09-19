@@ -1,8 +1,8 @@
-const http = require('http')
+import http from 'http'
+import { handleAsset } from './asset'
+import { handleHome } from './home'
+import { assetRoute, homeRoute, routes } from './routes/index'
 const { Server } = http
-const { routes, homeRoute, assetRoute } = require('./routes/index')
-const { handleHome } = require('./home')
-const { handleAsset } = require('./asset')
 
 function matchRoute(routes, req) {
   const match = route => {

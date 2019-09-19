@@ -1,4 +1,4 @@
-const paths = {
+export const paths = {
   GitHub: '/github',
   bot: '/bot',
   interactive: '/interactive-components',
@@ -7,24 +7,20 @@ const paths = {
   githubAssets: '/github-code-review-notifier', // asset path prefix on GitHub pages
 }
 
-exports.paths = paths
+import bot from './bot'
+import github from './github'
+import interactive from './interactive'
+import oauth from './oauth'
 
-const bot = require('./bot')
-const github = require('./github')
-const interactive = require('./interactive')
-const oauth = require('./oauth')
-
-const homeRoute = {
+export const homeRoute = {
   path: paths.home,
 }
-exports.homeRoute = homeRoute
 
-const assetRoute = {
+export const assetRoute = {
   path: paths.githubAssets,
 }
-exports.assetRoute = assetRoute
 
-exports.routes = [
+export const routes = [
   {
     path: paths.GitHub,
     handler: github,

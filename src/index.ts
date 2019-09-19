@@ -1,5 +1,4 @@
-const getURL = req => new URL(`https://${req.headers.host}${req.url}`)
-exports.getURL = getURL
+export const getURL = req => new URL(`https://${req.headers.host}${req.url}`)
 
 const wwwFormParser = body =>
   body
@@ -41,7 +40,7 @@ async function parseContent(req) {
   return data
 }
 
-const requestHandler = handler => async (req, res) => {
+export const requestHandler = handler => async (req, res) => {
   try {
     const data = await parseContent(req)
     const result = await handler(req, data)
@@ -52,7 +51,5 @@ const requestHandler = handler => async (req, res) => {
     res.end(String(err))
   }
 }
-
-exports.requestHandler = requestHandler
 
 require('./v1')

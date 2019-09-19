@@ -1,6 +1,6 @@
-const db = require('./db')
-const { sendAsBot } = require('./bot')
-const { getURL } = require('./')
+import { getURL } from './'
+import { sendAsBot } from './bot'
+import db from './db'
 
 const GITHUB_EVENT_HEADER_KEY = 'X-GitHub-Event'
 
@@ -24,7 +24,7 @@ const getWorkspace = (req, data) => {
   return workspace
 }
 
-exports.handleGitHubHook = (req, data) => {
+export const handleGitHubHook = (req, data) => {
   // handle application/x-www-form-urlencoded data
   if (data.payload) data = JSON.parse(data.payload)
 

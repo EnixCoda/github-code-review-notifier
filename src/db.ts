@@ -1,5 +1,5 @@
-const firebase = require('firebase')
-const { firebaseConfig } = require('./config')
+import firebase from 'firebase'
+import { firebaseConfig } from './config'
 
 firebase.initializeApp(firebaseConfig)
 
@@ -35,35 +35,31 @@ const keys = {
   botID: `botID`,
 }
 
-const paths = {
+export const paths = {
   registered: workspace => `${keys.registered}/${workspace}`,
   link: workspace => `${keys.link}/${workspace}`,
 }
-
-exports.paths = paths
 
 function getRef(ref) {
   return firebase.database().ref(ref)
 }
 
-function save(ref, value) {
+export function save(ref, value) {
   return getRef(ref).set(value)
 }
-exports.save = save
 
-function remove(ref) {
+export function remove(ref) {
   return getRef(ref).remove()
 }
-exports.remove = remove
 
 function loadVal(ref) {
   return getRef(ref)
     .once('value')
     .then(snapshot => snapshot.val())
 }
-exports.load = loadVal
+export const load = loadVal
 
-function saveLink(workspace, { githubName, slackUserID }) {
+export function saveLink(workspace, { githubName, slackUserID }) {
   return getRef(paths.link(workspace))
     .push({
       [keys.slackUserID]: slackUserID,
@@ -75,7 +71,6 @@ function saveLink(workspace, { githubName, slackUserID }) {
       return false
     })
 }
-exports.saveLink = saveLink
 
 function genLinkQuery(workspace, { githubName, slackUserID }) {
   let key, value
@@ -92,44 +87,39 @@ function genLinkQuery(workspace, { githubName, slackUserID }) {
     .equalTo(value)
 }
 
-function removeLink(workspace, { githubName, slackUserID }) {
+export function removeLink(workspace, { githubName, slackUserID }) {
   return genLinkQuery(workspace, { githubName, slackUserID })
     .limitToFirst(1)
     .once('value')
     .then(snapshot => {
       if (snapshot.exists()) {
         return snapshot.forEach(child =>
-          child
-            .ref
+          child.ref
             .remove()
             .then(() => true)
             .catch(err => {
               console.error(err)
               return false
-            })
+            }),
         )
       }
       return true
     })
 }
-exports.removeLink = removeLink
 
-function loadLinks(workspace, { githubName, slackUserID }) {
+export function loadLinks(workspace, { githubName, slackUserID }) {
   return genLinkQuery(workspace, { githubName, slackUserID })
     .once('value')
     .then(snapshot => (snapshot.exists() ? Object.values(snapshot.val()) : null))
 }
-exports.loadLinks = loadLinks
 
-function loadWorkspace(workspace) {
+export function loadWorkspace(workspace) {
   return loadVal(paths.registered(workspace)).then(val => {
     if (!val) throw null
     return val
   })
 }
-exports.loadWorkspace = loadWorkspace
 
-function createWorkspace(workspace, { botID, botToken, accessToken }) {
+export function createWorkspace(workspace, { botID, botToken, accessToken }) {
   return save(paths.registered(workspace), { botID, botToken, accessToken }).then(() => true)
 }
-exports.createWorkspace = createWorkspace

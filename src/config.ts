@@ -8,7 +8,7 @@ if (!SIGNING_SECRET) throw Error('missing signing secret')
 
 const firebaseConfig = JSON.parse(Buffer.from(FIREBASE, 'base64').toString())
 
-module.exports = {
+export default {
   firebaseConfig,
   verificationToken: VERIFICATION_TOKEN,
   clientID: CLIENT_ID,
