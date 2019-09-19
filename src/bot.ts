@@ -38,7 +38,7 @@ const handleCommand = (
       return db.saveLink(workspace, { github: githubName, slack: slackUserID }).then(succeeded => {
         if (succeeded) return `Linked <@${slackUserID}> to ${githubName}@GitHub, congrats!`
         else return `Sorry, could not link.`
-      }) as Promise<string>
+      })
     case actions.unlink:
       return db.removeLink(workspace, { github: githubName }).then(succeeded => {
         if (succeeded) return `Unlinked <@${slackUserID}> from ${githubName}@GitHub!`

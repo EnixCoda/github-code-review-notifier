@@ -1,5 +1,6 @@
 import firebase from 'firebase'
 import { firebaseConfig } from './config'
+import { dePromiseLike } from './utils'
 
 firebase.initializeApp(firebaseConfig)
 
@@ -41,12 +42,14 @@ export function load<T>(ref: RefSeed) {
 }
 
 export function saveLink(workspace: string, { github, slack }: GSLink) {
-  return getRef(paths.link(workspace))
-    .push({
-      [keys.slackUserID]: slack,
-      [keys.githubName]: github,
-    })
-    .then(() => true)
+  return dePromiseLike(
+    getRef(paths.link(workspace))
+      .push({
+        [keys.slackUserID]: slack,
+        [keys.githubName]: github,
+      })
+      .then(() => true),
+  )
 }
 
 function getGitHubLinkQuery(workspace: string, { github }: Pick<GSLink, 'github'>) {
