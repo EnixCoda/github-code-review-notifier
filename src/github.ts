@@ -1,4 +1,4 @@
-import { IncomingMessage } from 'http'
+import { IncomingMessage } from '../extra'
 import { getURL, RouteHandler } from './'
 import { sendAsBot } from './bot'
 import * as db from './db'
