@@ -5,9 +5,6 @@
   "main": "build/index.js",
   "author": "EnixCoda",
   "license": "ISC",
-  "scripts": {
-    "build": "tsc"
-  },
   "engines": {
     "node": "8.x.x"
   },
