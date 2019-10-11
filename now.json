@@ -1,6 +1,5 @@
 {
   "name": "github-code-review-notifier",
-  "version": 2,
   "env": {
     "FIREBASE": "@firebase",
     "VERIFICATION_TOKEN": "@verification_token",
@@ -9,5 +8,11 @@
     "SIGNING_SECRET": "@signing_secret",
     "NODE_ENV": "production"
   },
+  "routes": [
+    { "src": "/bot", "dest": "/api/bot.ts" },
+    { "src": "/github", "dest": "/api/github.ts" },
+    { "src": "/oauth", "dest": "/api/oauth.ts" },
+    { "src": "/interactive-components", "dest": "/api/interactive-component.tss" }
+  ],
   "alias": "https://github-code-review-notifier.now.sh"
 }
