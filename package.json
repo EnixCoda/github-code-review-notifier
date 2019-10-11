@@ -2,6 +2,10 @@
   "name": "github-code-review-notifier",
   "version": "0.0.1",
   "description": "",
+  "repository": {
+    "url": "https://github.com/EnixCoda/github-code-review-notifier",
+    "type": "git"
+  },
   "main": "build/index.js",
   "author": "EnixCoda",
   "license": "ISC",
