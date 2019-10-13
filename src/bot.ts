@@ -187,9 +187,7 @@ export const handleInteractiveComponents: RouteHandler = async function handleIn
                 await openUnlinkDialog(botToken, payload, githubNames)
               }
             } else {
-              if (githubNames) {
-                await openLinkDialog(botToken, payload, githubNames)
-              }
+              await openLinkDialog(botToken, payload, githubNames || undefined)
             }
           }
           default:
@@ -241,7 +239,7 @@ async function openConnectDialog(
   return ok
 }
 
-function openLinkDialog(botToken: string, payload: SlackPayload, githubNames: string[]) {
+function openLinkDialog(botToken: string, payload: SlackPayload, githubNames?: string[]) {
   const elements = [
     {
       label: `GitHub Username`,
