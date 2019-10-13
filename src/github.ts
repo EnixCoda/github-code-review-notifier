@@ -51,18 +51,18 @@ export const handleGitHubHook: RouteHandler = async (req, data) => {
         ])
         if (reviewerUserID && requesterUserID) {
           // both registered
-          const text = `${requesterGitHubName}(<@${requesterUserID}>) requested code review from ${reviewerGitHubName}(<@${reviewerUserID}>):\n${pullRequestURL}`
+          const text = `🧐 ${requesterGitHubName}(<@${requesterUserID}>) requested code review from ${reviewerGitHubName}(<@${reviewerUserID}>):\n${pullRequestURL}`
           return Promise.all([
             sendAsBot(botToken, requesterUserID, text),
             sendAsBot(botToken, reviewerUserID, text),
           ]).then(() => true)
         } else if (reviewerUserID) {
           // only reviewer registered
-          let text = `${requesterGitHubName}(<@${requesterUserID}>) requested code review from ${reviewerGitHubName}(<@${reviewerUserID}>):\n${pullRequestURL}\n\nNote: ${requesterGitHubName} has not been linked yet. If he/she is in this Slack workspace, please introduce this app to them!`
+          const text = `🧐 ${requesterGitHubName}(<@${requesterUserID}>) requested code review from ${reviewerGitHubName}(<@${reviewerUserID}>):\n${pullRequestURL}\n\nNote: ${requesterGitHubName} has not been linked to this workspace yet.`
           return sendAsBot(botToken, reviewerUserID, text)
         } else if (requesterUserID) {
           // only requestor registered
-          let text = `${requesterGitHubName}(<@${requesterUserID}>) requested code review from ${reviewerGitHubName}(<@${reviewerUserID}>):\n${pullRequestURL}\n\nNote: ${reviewerGitHubName} has not been linked yet. If he/she is in this Slack workspace, please introduce this app to them!`
+          const text = `🧐 ${requesterGitHubName}(<@${requesterUserID}>) requested code review from ${reviewerGitHubName}(<@${reviewerUserID}>):\n${pullRequestURL}\n\nNote: ${reviewerGitHubName} has not been linked to this workspace yet.`
           return sendAsBot(botToken, requesterUserID, text)
         } else {
           console.log(`could not find users for`, requesterGitHubName, `and`, reviewerGitHubName)
@@ -103,7 +103,7 @@ export const handleGitHubHook: RouteHandler = async (req, data) => {
               return sendAsBot(
                 botToken,
                 requesterUserID,
-                `Your pull request has been approved!\n${reviewUrl}`,
+                `🎉 Your pull request has been approved!\n${reviewUrl}`,
               )
             } else if (reviewerUserID) {
               // we could ask reviewer to introduce this app to PR requester here, but not now
@@ -113,10 +113,10 @@ export const handleGitHubHook: RouteHandler = async (req, data) => {
           } else {
             // review message
             if (requesterUserID) {
-              let text = `${requesterGitHubName}(<@${requesterUserID}>)'s pull request has been reviewed by ${reviewerGitHubName}(<@${reviewerUserID}>)\n${reviewUrl}`
+              let text = `👏 ${requesterGitHubName}(<@${requesterUserID}>)'s pull request has been reviewed by ${reviewerGitHubName}(<@${reviewerUserID}>)\n${reviewUrl}`
               if (!reviewerUserID) {
                 const linkNotify = (gitHubName: string) =>
-                  `\n\nNote: ${gitHubName} has not been linked yet. If he/she is in this Slack workspace, please introduce this app to them!`
+                  `\n\nNote: ${gitHubName} has not been linked to this workspace yet.`
                 text += linkNotify(reviewerGitHubName)
               }
               return sendAsBot(botToken, requesterUserID, text)

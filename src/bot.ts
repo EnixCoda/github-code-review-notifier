@@ -160,7 +160,7 @@ export const handleInteractiveComponents: RouteHandler = async function handleIn
             await sendAsBot(
               botToken,
               channel,
-              `Please set up your project's webhook with this URL:\n${webhook}`,
+              `🔧 Please add this webhook to your GitHub project:\n${webhook}`,
             )
             return
           }
@@ -181,7 +181,7 @@ export const handleInteractiveComponents: RouteHandler = async function handleIn
                 await sendAsBot(
                   botToken,
                   channelID,
-                  `Hi <@${slackUserID}>, you are not linked to any GitHub user yet.`,
+                  `👻 Hi <@${slackUserID}>, you are not linked to any GitHub users yet. You can get started by clicking "Link to a GitHub account" on the left.`,
                 )
               } else {
                 await openUnlinkDialog(botToken, payload, githubNames)
