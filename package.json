@@ -19,7 +19,7 @@
     "firebase": "^5.0.4",
     "http-proxy": "^1.17.0",
     "now-env": "^3.0.4",
-    "slack": "^11.0.1",
+    "slack": "^11.0.2",
     "typescript": "^3.6.4",
     "uuid": "^3.3.2"
   }
