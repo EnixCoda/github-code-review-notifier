@@ -157,7 +157,7 @@ export const handleInteractiveComponents: RouteHandler = async function handleIn
             const url = getURL(req)
             const webhook = generateWebhookURL(url.host, workspace)
             const { botToken } = await db.loadWorkspace(workspace)
-            sendAsBot(
+            await sendAsBot(
               botToken,
               channel,
               `Please set up your project's webhook with this URL:\n${webhook}`,
@@ -178,7 +178,7 @@ export const handleInteractiveComponents: RouteHandler = async function handleIn
               if (!githubNames) {
                 const { botToken } = await db.loadWorkspace(workspace)
 
-                sendAsBot(
+                await sendAsBot(
                   botToken,
                   channelID,
                   `Hi <@${slackUserID}>, you are not linked to any GitHub user yet.`,
@@ -207,7 +207,7 @@ export const handleInteractiveComponents: RouteHandler = async function handleIn
         } = payload
         const text = await handleCommand(workspace, githubName, slackUserID, command)
         const { botToken } = await db.loadWorkspace(workspace)
-        sendAsBot(botToken, channel, text)
+        await sendAsBot(botToken, channel, text)
 
         // to complete an dialog, return 200 with empty body
         return
