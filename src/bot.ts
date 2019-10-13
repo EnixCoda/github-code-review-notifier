@@ -34,16 +34,16 @@ const handleCommand = (
   command: string,
 ) => {
   switch (command) {
-    case actions.link:
-      return db.saveLink(workspace, { github: githubName, slack: slackUserID }).then(succeeded => {
-        if (succeeded) return `Linked <@${slackUserID}> to ${githubName}@GitHub, congrats!`
-        else return `Sorry, could not link.`
-      })
-    case actions.unlink:
-      return db.removeLink(workspace, { github: githubName }).then(succeeded => {
-        if (succeeded) return `Unlinked <@${slackUserID}> from ${githubName}@GitHub!`
-        else return `Sorry, unlink failed.`
-      })
+    case actions.link: {
+      const succeeded = db.saveLink(workspace, { github: githubName, slack: slackUserID })
+      if (succeeded) return `Linked <@${slackUserID}> to ${githubName}@GitHub, congrats!`
+      else return `Sorry, could not link.`
+    }
+    case actions.unlink: {
+      const succeeded = db.removeLink(workspace, { github: githubName })
+      if (succeeded) return `Unlinked <@${slackUserID}> from ${githubName}@GitHub!`
+      else return `Sorry, unlink failed.`
+    }
     default:
       throw `unknown command ${command}`
   }
@@ -156,12 +156,11 @@ export const handleInteractiveComponents: RouteHandler = async function handleIn
             } = payload
             const url = getURL(req)
             const webhook = generateWebhookURL(url.host, workspace)
-            db.loadWorkspace(workspace).then(({ botToken }) =>
-              sendAsBot(
-                botToken,
-                channel,
-                `Please set up your project's webhook with this URL:\n${webhook}`,
-              ),
+            const { botToken } = await db.loadWorkspace(workspace)
+            sendAsBot(
+              botToken,
+              channel,
+              `Please set up your project's webhook with this URL:\n${webhook}`,
             )
             return
           }
@@ -172,25 +171,22 @@ export const handleInteractiveComponents: RouteHandler = async function handleIn
               user: { id: slackUserID },
               channel: { id: channelID },
             } = payload
-            db.loadWorkspace(workspace).then(({ botToken }) => {
-              db.loadLinks(workspace, { slack: slackUserID }).then(links => {
-                const githubNames = links ? links.map(({ github }) => github) : null
-                if (action === actions.unlink) {
-                  if (!githubNames)
-                    db.loadWorkspace(workspace).then(({ botToken }) =>
-                      sendAsBot(
-                        botToken,
-                        channelID,
-                        `Hi <@${slackUserID}>, you are not linked to any GitHub user yet.`,
-                      ),
-                    )
-                  else openUnlinkDialog(botToken, payload, githubNames).catch(console.error)
-                } else {
-                  if (githubNames)
-                    openLinkDialog(botToken, payload, githubNames).catch(console.error)
-                }
-              })
-            })
+            const { botToken } = await db.loadWorkspace(workspace)
+            const links = await db.loadLinks(workspace, { slack: slackUserID })
+            const githubNames = links ? links.map(({ github }) => github) : null
+            if (action === actions.unlink) {
+              if (!githubNames) {
+                const { botToken } = await db.loadWorkspace(workspace)
+
+                sendAsBot(
+                  botToken,
+                  channelID,
+                  `Hi <@${slackUserID}>, you are not linked to any GitHub user yet.`,
+                )
+              } else openUnlinkDialog(botToken, payload, githubNames).catch(console.error)
+            } else {
+              if (githubNames) openLinkDialog(botToken, payload, githubNames).catch(console.error)
+            }
           }
           default:
             break
@@ -205,9 +201,10 @@ export const handleInteractiveComponents: RouteHandler = async function handleIn
           user: { id: slackUserID },
           submission: { github_name: githubName },
         } = payload
-        handleCommand(workspace, githubName, slackUserID, command).then(text =>
-          db.loadWorkspace(workspace).then(({ botToken }) => sendAsBot(botToken, channel, text)),
-        )
+        const text = await handleCommand(workspace, githubName, slackUserID, command)
+        const { botToken } = await db.loadWorkspace(workspace)
+        sendAsBot(botToken, channel, text)
+
         // to complete an dialog, return 200 with empty body
         return
       }
@@ -272,30 +269,24 @@ export function openUnlinkDialog(botToken: string, payload: SlackPayload, github
   return openConnectDialog(botToken, payload, actions.unlink, `Undo link`, elements)
 }
 
-export const handleOAuth: RouteHandler = function handleOAuth(req, data) {
+export const handleOAuth: RouteHandler = async function handleOAuth(req, data) {
   const url = getURL(req)
   const code = url.searchParams.get('code')
-  return Slack.oauth
-    .access({
+
+  try {
+    const {
+      access_token: accessToken,
+      team_id: workspace,
+      bot: { bot_user_id: botID, bot_access_token: botToken },
+    } = await Slack.oauth.access({
       client_secret: clientSecret,
       client_id: clientID,
       code,
     })
-    .then(
-      ({
-        access_token: accessToken,
-        team_id: workspace,
-        bot: { bot_user_id: botID, bot_access_token: botToken },
-      }) =>
-        db
-          .createWorkspace(workspace, { accessToken, botID, botToken })
-          .then(
-            () =>
-              `Well done! GitHub Code Review Notifier have been added to your workspace. Check out @CodeReviewNotifier on Slack!`,
-          ),
-    )
-    .catch(error => {
-      console.error(error)
-      return `Something went wrong :(`
-    })
+    await db.createWorkspace(workspace, { accessToken, botID, botToken })
+    return `Well done! GitHub Code Review Notifier have been added to your workspace. Check out @CodeReviewNotifier on Slack!`
+  } catch (error) {
+    console.error(error)
+    return `Something went wrong :(`
+  }
 }
