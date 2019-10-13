@@ -78,6 +78,8 @@ export const requestHandler: (handler: RouteHandler) => RequestListener = handle
     console.error(err)
     if (logRequestOnError) {
       log(req.url || '', data || '')
+    } else {
+      console.log('not logging above error to db')
     }
     res.writeHead(400)
     res.end(String(err))

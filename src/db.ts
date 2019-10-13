@@ -112,6 +112,7 @@ export function createWorkspace(
 }
 
 export async function log(path: string, data: string) {
-  await save(keys.log, { path, data })
-  return true
+  return await getRef(keys.log)
+    .push({ path, data })
+    .then(() => true)
 }
