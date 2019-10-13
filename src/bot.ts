@@ -183,9 +183,13 @@ export const handleInteractiveComponents: RouteHandler = async function handleIn
                   channelID,
                   `Hi <@${slackUserID}>, you are not linked to any GitHub user yet.`,
                 )
-              } else return openUnlinkDialog(botToken, payload, githubNames)
+              } else {
+                await openUnlinkDialog(botToken, payload, githubNames)
+              }
             } else {
-              if (githubNames) return openLinkDialog(botToken, payload, githubNames)
+              if (githubNames) {
+                await openLinkDialog(botToken, payload, githubNames)
+              }
             }
           }
           default:
@@ -216,14 +220,14 @@ export const handleInteractiveComponents: RouteHandler = async function handleIn
   }
 }
 
-function openConnectDialog(
+async function openConnectDialog(
   botToken: string,
   payload: SlackPayload,
   state: string,
   title: string,
   elements: SlackElement,
 ) {
-  return Slack.dialog.open({
+  const { ok } = await Slack.dialog.open({
     token: botToken,
     trigger_id: payload.trigger_id,
     dialog: {
@@ -234,6 +238,7 @@ function openConnectDialog(
       elements,
     },
   })
+  return ok
 }
 
 function openLinkDialog(botToken: string, payload: SlackPayload, githubNames: string[]) {
