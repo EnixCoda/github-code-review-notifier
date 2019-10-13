@@ -9,10 +9,10 @@
     "NODE_ENV": "production"
   },
   "routes": [
-    { "src": "/bot", "dest": "/api/bot.ts" },
-    { "src": "/github", "dest": "/api/github.ts" },
-    { "src": "/oauth", "dest": "/api/oauth.ts" },
-    { "src": "/interactive-components", "dest": "/api/interactive-component.tss" },
+    { "src": "/oauth/?", "dest": "/api/oauth.ts" },
+    { "src": "/bot/?", "dest": "/api/bot.ts" },
+    { "src": "/github/?", "dest": "/api/github.ts" },
+    { "src": "/interactive-components/?", "dest": "/api/interactive-components.ts" },
     { "src": "/github-code-review-notifier/(.*)", "dest": "/api/github-code-review-notifier.ts" },
     { "src": "/", "dest": "/api/index.ts" }
   ],
