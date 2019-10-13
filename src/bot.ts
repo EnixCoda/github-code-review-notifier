@@ -52,7 +52,7 @@ const handleCommand = (
 const handleMessage: RouteHandler<string | false> = async function(req, data) {
   const text = data.event.text
   // not simple text message
-  if (typeof text === undefined) return false
+  if (text === undefined) return false
 
   const matched = text.match(commandRegexp)
   if (!matched) return false
