@@ -1,5 +1,7 @@
 import { URL } from 'url'
 import { IncomingMessage, RequestListener } from '../extra'
+import { logRequestOnError } from './config'
+import { log } from './db'
 
 export type Route = {
   path: string
@@ -66,12 +68,17 @@ export const requestHandler: (handler: RouteHandler) => RequestListener = handle
   req,
   res,
 ) => {
+  let data
+  let result
   try {
-    const data = await parseContent(req)
-    const result = await handler(req, data)
+    data = await parseContent(req)
+    result = await handler(req, data)
     res.end(result ? JSON.stringify(result) : undefined)
   } catch (err) {
     console.error(err)
+    if (logRequestOnError) {
+      log(req.url || '', data || '')
+    }
     res.writeHead(400)
     res.end(String(err))
   }

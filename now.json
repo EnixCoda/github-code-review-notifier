@@ -6,6 +6,7 @@
     "CLIENT_SECRET": "@client_secret",
     "CLIENT_ID": "@client_id",
     "SIGNING_SECRET": "@signing_secret",
+    "LOG_REQUEST_ON_ERROR": "@log_request_on_error",
     "NODE_ENV": "production"
   },
   "routes": [

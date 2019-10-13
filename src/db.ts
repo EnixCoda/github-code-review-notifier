@@ -12,9 +12,10 @@ const keys = {
   accessToken: `accessToken`,
   botToken: `botToken`,
   botID: `botID`,
+  log: `logs`,
 }
 
-export const paths: {
+const paths: {
   [key: string]: (seed: string) => string
 } = {
   registered: workspace => `${keys.registered}/${workspace}`,
@@ -108,4 +109,9 @@ export function createWorkspace(
   { botID, botToken, accessToken }: WorkspaceMeta,
 ) {
   return save(paths.registered(workspace), { botID, botToken, accessToken }).then(() => true)
+}
+
+export async function log(path: string, data: string) {
+  await save(keys.log, { path, data })
+  return true
 }
