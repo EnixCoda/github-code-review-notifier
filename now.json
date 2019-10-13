@@ -6,7 +6,16 @@
     "CLIENT_SECRET": "@client_secret",
     "CLIENT_ID": "@client_id",
     "SIGNING_SECRET": "@signing_secret",
+    "LOG_REQUEST_ON_ERROR": "@log_request_on_error",
     "NODE_ENV": "production"
   },
+  "routes": [
+    { "src": "/oauth/?", "dest": "/api/oauth.ts" },
+    { "src": "/bot/?", "dest": "/api/bot.ts" },
+    { "src": "/github/?", "dest": "/api/github.ts" },
+    { "src": "/interactive-components/?", "dest": "/api/interactive-components.ts" },
+    { "src": "/github-code-review-notifier/(.*)", "dest": "/api/github-code-review-notifier.ts" },
+    { "src": "/", "dest": "/api/index.ts" }
+  ],
   "alias": "https://github-code-review-notifier.now.sh"
 }

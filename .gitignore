@@ -1,5 +1,7 @@
 .vscode
 .DS_Store
 node_modules
-tmp
 now-secrets.json
+build
+
+.env

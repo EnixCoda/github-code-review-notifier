@@ -2,20 +2,25 @@
   "name": "github-code-review-notifier",
   "version": "0.0.1",
   "description": "",
-  "main": "src/index.js",
-  "scripts": {
-    "start": "node ./src/index.js"
+  "repository": {
+    "url": "https://github.com/EnixCoda/github-code-review-notifier",
+    "type": "git"
   },
+  "main": "build/index.js",
   "author": "EnixCoda",
   "license": "ISC",
   "engines": {
-    "node": "10.x.x"
+    "node": "8.x.x"
   },
   "dependencies": {
+    "@now/node": "^1.0.0",
+    "@types/http-proxy": "^1.17.0",
+    "@types/uuid": "^3.4.5",
     "firebase": "^5.0.4",
     "http-proxy": "^1.17.0",
     "now-env": "^3.0.4",
-    "slack": "^11.0.1",
+    "slack": "^11.0.2",
+    "typescript": "^3.6.4",
     "uuid": "^3.3.2"
   }
 }
