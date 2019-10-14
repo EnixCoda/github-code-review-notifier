@@ -18,17 +18,17 @@ When requested to review pull request on GitHub or when your pull request has be
 
    <a href="https://slack.com/oauth/authorize?client_id=358699124487.462026355174&scope=chat:write:bot,bot" target="_blank"><img alt="Add to Slack" height="40" width="139" src="https://platform.slack-edge.com/img/add_to_slack.png" srcset="https://platform.slack-edge.com/img/add_to_slack.png 1x, https://platform.slack-edge.com/img/add_to_slack@2x.png 2x" /></a>
 
-2. Then you will find `@GitHub Code Review Notifier` added into your workspace. Talk to it to setup.
+2. Then you could find `@GitHub Code Review Notifier` in your workspace. Say `hi` to it to begin.
 
-3. Click `Get webhook URL for GitHub` in the menu, and create a webhook with it in your GitHub projects.
+3. Click `Get webhook URL for GitHub` in the response menu and create webhook with it in your GitHub projects.
 
-> Multiple projects can share one URL in a workspace.
-> [How to create GitHub webhook?](https://developer.github.com/webhooks/creating/)
+   > The events sent to it should at least include `Pull requests` and `Pull request reviews`. I'd recommend pick `Send me everything` to make your life easier :)
 
-4. Click `Link` from menu to link your accounts. Only linked users will get notifications. So don't forget to tell your team about this tool.
+   > Multiple projects can share one URL in one Slack workspace.
+   > [How to create GitHub webhook?](https://developer.github.com/webhooks/creating/)
+
+4. Click `Link` from menu to link your accounts as only linked users will get notifications. Don't forget to tell your teammates about this tool.
 
 ## More details
 
-1. You can grant only `Pull requests` and `Pull request reviews` to the webhook in order to expose less info to this App. Even if you granted all, this App will ignore others anyway, no worries :)
-
-1. This App is **serverless**, deployed on now.sh and stores data on firebase. So every line of code running online is visible to everyone, transparent and safe.
+1. This App is **serverless**, deployed on now.sh and stores data on firebase. So every line of code running online is public, transparent and safe.
