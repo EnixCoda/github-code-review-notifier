@@ -160,7 +160,7 @@ export const handleInteractiveComponents: RouteHandler = async function handleIn
             await sendAsBot(
               botToken,
               channel,
-              `🔧 Please add this webhook to your GitHub project:\n${webhook}`,
+              `🔧 Please add this webhook to your GitHub projects:\n${webhook}\n\nNote: it is bound to this Slack workspace and could be shared across multiple projects`,
             )
             return
           }
