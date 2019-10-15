@@ -32,6 +32,7 @@ export const handleGitHubHook: RouteHandler = async (req, data) => {
 
   const workspace = getWorkspace(req)
   const type = getHeader(req, GITHUB_EVENT_HEADER_KEY)
+  if (!type) throw Error(`no github event header provided`)
   switch (type) {
     case GITHUB_EVENT_TYPES.PING:
       return `I'm ready!`
@@ -130,7 +131,6 @@ export const handleGitHubHook: RouteHandler = async (req, data) => {
           return 'unresolved action'
       }
     default:
-      if (!type) throw Error(`no github event header provided`)
       return `no handler for this event type`
   }
 }
