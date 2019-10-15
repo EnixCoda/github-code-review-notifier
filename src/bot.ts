@@ -23,6 +23,7 @@ const actions = {
   getWebhook: `get-webhook`,
   link: `link`,
   unlink: `unlink`,
+  feedback: `feedback`,
 }
 
 const commandRegexp = /(link|unlink) ([\w-]+)/
@@ -36,12 +37,12 @@ const handleCommand = (
   switch (command) {
     case actions.link: {
       const succeeded = db.saveLink(workspace, { github: githubName, slack: slackUserID })
-      if (succeeded) return `Linked <@${slackUserID}> to ${githubName}@GitHub, congrats!`
+      if (succeeded) return `🥳 Linked <@${slackUserID}> to ${githubName}@GitHub!`
       else return `Sorry, could not link.`
     }
     case actions.unlink: {
       const succeeded = db.removeLink(workspace, { github: githubName })
-      if (succeeded) return `Unlinked <@${slackUserID}> from ${githubName}@GitHub!`
+      if (succeeded) return `👋 Unlinked <@${slackUserID}> from ${githubName}@GitHub!`
       else return `Sorry, unlink failed.`
     }
     default:
@@ -100,6 +101,12 @@ const menuMessage = {
           name: actions.getWebhook,
           value: actions.getWebhook,
         },
+        {
+          text: 'Feedback',
+          type: 'button',
+          name: actions.feedback,
+          value: actions.feedback,
+        },
       ],
     },
   ],
@@ -153,6 +160,19 @@ export const handleInteractiveComponents: RouteHandler = async function handleIn
       case types.interactiveMessage: {
         const action = payload.actions[0].value
         switch (action) {
+          case actions.feedback: {
+            const {
+              team: { id: workspace },
+              channel: { id: channel },
+            } = payload
+            const { botToken } = await db.loadWorkspace(workspace)
+            await sendAsBot(
+              botToken,
+              channel,
+              `📝 If you have any question, feature request or bug report, please <https://github.com/EnixCoda/github-code-review-notifier/issues/new|draft an issue>.`,
+            )
+            return
+          }
           case actions.getWebhook: {
             const {
               team: { id: workspace },
