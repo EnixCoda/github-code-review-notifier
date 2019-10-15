@@ -111,8 +111,8 @@ export function createWorkspace(
   return save(paths.registered(workspace), { botID, botToken, accessToken }).then(() => true)
 }
 
-export async function log(path: string, data: string, info: string) {
+export async function log(content: { [key: string]: string | undefined }) {
   return await getRef(keys.log)
-    .push({ path, data, info })
+    .push(content)
     .then(() => true)
 }

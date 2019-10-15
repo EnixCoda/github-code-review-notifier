@@ -77,7 +77,12 @@ export const requestHandler: (handler: RouteHandler) => RequestListener = handle
   } catch (err) {
     console.error(err)
     if (logRequestOnError) {
-      log(req.url || '', data || '', err)
+      log({
+        time: new Date().toLocaleString('US'),
+        path: req.url,
+        info: err,
+        data,
+      })
     } else {
       console.log('not logging above error to db')
     }
