@@ -76,7 +76,7 @@ export const sendAsBot = (
 const menuMessage = {
   attachments: [
     {
-      text: 'Hi there! I can do these for you, check them out!',
+      text: 'Hi, I can do these for you, check them out!',
       fallback: 'Something went wrong.',
       callback_id: 'link_or_unlink',
       color: '#3AA3E3',
@@ -124,6 +124,10 @@ export const handleBotMessages: RouteHandler<{
         return
       } else if (result === false) {
         // in unknown format
+        if (!data.event.user) {
+          // might be beautified message
+          return
+        }
         return sendAsBot(botToken, data.event.channel, '', menuMessage)
       } else {
         return sendAsBot(botToken, data.event.channel, result)
@@ -160,7 +164,7 @@ export const handleInteractiveComponents: RouteHandler = async function handleIn
             await sendAsBot(
               botToken,
               channel,
-              `🔧 Please add this webhook to your GitHub projects:\n${webhook}\n\nNote: it is bound to this Slack workspace and could be shared across multiple projects`,
+              `🔧 Please setup your GitHub projects with this webhook:\n${webhook}\n\nNeed help? Read the <https://enixcoda.github.io/github-code-review-notifier/#connect-github-projects|connect GitHub projects> section.`,
             )
             return
           }
