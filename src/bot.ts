@@ -48,21 +48,6 @@ const handleAction = (
   }
 }
 
-function parseActionMessage(text?: string) {
-  // not simple text message
-  if (text === undefined) return false
-
-  const commandRegexp = /(link|unlink) ([\w-]+)/
-  const matched = text.match(commandRegexp)
-  if (!matched) return false
-
-  const [, command, githubName] = matched
-  return {
-    command,
-    githubName,
-  }
-}
-
 export const sendAsBot = (
   botToken: string,
   channel: string,
@@ -131,23 +116,23 @@ export const handleBotMessages: RouteHandler = async (req, data) => {
     return
   }
 
-  const action = await parseActionMessage(data.event.text)
-  if (!action) {
-    // in unknown format
-    if (!data.event.user) {
-      // might be beautified message, ignore
-      return
-    }
-    return sendAsBot(botToken, data.event.channel, '', menuMessage)
+  if (!data.event.user) {
+    // might be beautified message, ignore
+    return
   }
 
-  const { command, githubName } = action
-  const slackUserID = data.event.user
-  return sendAsBot(
-    botToken,
-    data.event.channel,
-    await handleAction(workspace, githubName, slackUserID, command),
-  )
+  await sendAsBot(botToken, data.event.channel, '', {
+    attachments: [
+      {
+        text: 'Hi, I can do these for you, check them out!',
+        fallback: 'Something went wrong.',
+        callback_id: 'main_menu_callback_id',
+        color: '#3AA3E3',
+        attachment_type: 'default',
+        actions: mainMenuActions,
+      },
+    ],
+  })
 }
 
 const types = {
