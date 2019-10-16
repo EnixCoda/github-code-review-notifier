@@ -58,43 +58,32 @@ export const sendAsBot = (
     .postMessage(Object.assign({ as_user: true, token: botToken, channel, text }, extra))
     .then(({ ok }) => ok)
 
-const menuMessage = {
-  attachments: [
-    {
-      text: 'Hi, I can do these for you, check them out!',
-      fallback: 'Something went wrong.',
-      callback_id: 'link_or_unlink',
-      color: '#3AA3E3',
-      attachment_type: 'default',
-      actions: [
-        {
-          text: 'Link to a GitHub account',
-          type: 'button',
-          name: actions.link,
-          value: actions.link,
-        },
-        {
-          text: 'Undo link',
-          type: 'button',
-          name: actions.unlink,
-          value: actions.unlink,
-        },
-        {
-          text: 'Get GitHub webhook URL',
-          type: 'button',
-          name: actions.getWebhook,
-          value: actions.getWebhook,
-        },
-        {
-          text: 'Feedback',
-          type: 'button',
-          name: actions.feedback,
-          value: actions.feedback,
-        },
-      ],
-    },
-  ],
-}
+const mainMenuActions = [
+  {
+    text: 'Link you to GitHub',
+    type: 'button',
+    name: actions.link,
+    value: JSON.stringify(null),
+  },
+  {
+    text: 'Undo link',
+    type: 'button',
+    name: actions.unlink,
+    value: JSON.stringify(null),
+  },
+  {
+    text: 'Setup GitHub projects',
+    type: 'button',
+    name: actions.getWebhook,
+    value: JSON.stringify(null),
+  },
+  {
+    text: 'Feedback',
+    type: 'button',
+    name: actions.feedback,
+    value: JSON.stringify(null),
+  },
+]
 
 export const handleBotMessages: RouteHandler = async (req, data) => {
   switch (data.type) {
@@ -135,7 +124,7 @@ export const handleBotMessages: RouteHandler = async (req, data) => {
   })
 }
 
-const types = {
+const interactiveMessageTypes = {
   dialogSubmission: `dialog_submission`,
   interactiveMessage: `interactive_message`,
 }
@@ -148,48 +137,49 @@ export const handleInteractiveComponents: RouteHandler = async function handleIn
 
   if (data.payload) {
     const payload = JSON.parse(decodeURIComponent(data.payload))
-    switch (payload.type) {
-      case types.interactiveMessage: {
-        const action = payload.actions[0].value
+    const {
+      team: { id: workspace },
+      user: { id: slackUserID },
+      channel: { id: channelID },
+      type: interactiveMessageType,
+    } = payload
+    switch (interactiveMessageType) {
+      case interactiveMessageTypes.interactiveMessage: {
+        // Slack doc says there would be only one action:
+        // https://api.slack.com/docs/interactive-message-field-guide "Action URL invocation payload"
+        const {
+          actions: [{ name: action, value }],
+        } = payload
+
+        const state = createInitialState(action, value)
+
         switch (action) {
           case actions.feedback: {
-            const {
-              team: { id: workspace },
-              channel: { id: channel },
-            } = payload
             const { botToken } = await db.loadWorkspace(workspace)
             await sendAsBot(
               botToken,
-              channel,
+              channelID,
               `📝 If you have any question, feature request or bug report, please <https://github.com/EnixCoda/github-code-review-notifier/issues/new|draft an issue>.`,
             )
             return
           }
           case actions.getWebhook: {
-            const {
-              team: { id: workspace },
-              channel: { id: channel },
-            } = payload
             const url = getURL(req)
             const webhook = generateWebhookURL(url.host, workspace)
             const { botToken } = await db.loadWorkspace(workspace)
             await sendAsBot(
               botToken,
-              channel,
+              channelID,
               `🔧 Please setup your GitHub projects with this webhook:\n${webhook}\n\nNeed help? Read the <https://enixcoda.github.io/github-code-review-notifier/#connect-github-projects|connect GitHub projects> section.`,
             )
             return
           }
           case actions.link:
           case actions.unlink: {
-            const {
-              team: { id: workspace },
-              user: { id: slackUserID },
-              channel: { id: channelID },
-            } = payload
             const { botToken } = await db.loadWorkspace(workspace)
             const links = await db.loadLinks(workspace, { slack: slackUserID })
             const githubNames = links ? links.map(({ github }) => github) : null
+
             if (action === actions.unlink) {
               if (!githubNames) {
                 const { botToken } = await db.loadWorkspace(workspace)
@@ -197,31 +187,30 @@ export const handleInteractiveComponents: RouteHandler = async function handleIn
                 await sendAsBot(
                   botToken,
                   channelID,
-                  `👻 Hi <@${slackUserID}>, you are not linked to any GitHub users yet. You can get started by clicking "Link to a GitHub account" on the left.`,
+                  `👻 Hi <@${slackUserID}>, you are not linked to any GitHub users yet. You can get started by clicking "Link to GitHub" on the left.`,
                 )
               } else {
                 await openUnlinkDialog(botToken, payload, githubNames)
               }
             } else {
-              await openLinkDialog(botToken, payload, githubNames || undefined)
+              await openLinkDialog(botToken, payload, githubNames || undefined, state)
             }
+            return
           }
           default:
             break
         }
         return
       }
-      case types.dialogSubmission: {
+      case interactiveMessageTypes.dialogSubmission: {
         const {
-          state: command,
-          team: { id: workspace },
-          channel: { id: channel },
-          user: { id: slackUserID },
           submission: { github_name: githubName },
         } = payload
-        const responseMessage = await handleAction(workspace, githubName, slackUserID, command)
+        const { action, state } = parseState(payload.state)
+
+        const responseMessage = await handleAction(workspace, githubName, slackUserID, action)
         const { botToken } = await db.loadWorkspace(workspace)
-        await sendAsBot(botToken, channel, responseMessage)
+        await sendAsBot(botToken, channelID, responseMessage)
 
         return
       }
@@ -233,10 +222,41 @@ export const handleInteractiveComponents: RouteHandler = async function handleIn
   }
 }
 
+function createInitialState(name: string, value: string) {
+  const state = {}
+  if (Object.values(actions).includes(value)) {
+    // legacy message, leave state empty
+  } else {
+    // might be latest JSON serialized message
+    try {
+      Object.assign(state, JSON.parse(value))
+    } catch (err) {
+      throw new Error(`Unknown interactive message: ${JSON.stringify({ name, value })}`)
+    }
+  }
+  return state
+}
+
+function parseState(state: string) {
+  if (Object.values(actions).includes(state)) {
+    // legacy mode
+    return {
+      action: state,
+    }
+  } else {
+    try {
+      return JSON.parse(state)
+    } catch (err) {
+      throw new Error(`Unknown interactive submission state: ${state}`)
+    }
+  }
+}
+
 async function openConnectDialog(
   botToken: string,
   payload: SlackPayload,
-  state: string,
+  action: string,
+  state: ExpectedAny,
   title: string,
   elements: SlackElement,
 ) {
@@ -247,14 +267,24 @@ async function openConnectDialog(
       callback_id: uuid(),
       title,
       submit_label: 'Submit',
-      state,
+      state: JSON.stringify({
+        action,
+        state,
+      }),
       elements,
     },
   })
   return ok
 }
 
-function openLinkDialog(botToken: string, payload: SlackPayload, githubNames?: string[]) {
+function openLinkDialog(
+  botToken: string,
+  payload: SlackPayload,
+  githubNames?: string[],
+  state?: {
+    githubName?: string
+  },
+) {
   const elements = [
     {
       label: `GitHub Username`,
@@ -268,10 +298,17 @@ function openLinkDialog(botToken: string, payload: SlackPayload, githubNames?: s
       max_length: 24,
     },
   ]
-  return openConnectDialog(botToken, payload, actions.link, `Link to GitHub`, elements)
+  return openConnectDialog(botToken, payload, actions.link, state, `Link to GitHub`, elements)
 }
 
-function openUnlinkDialog(botToken: string, payload: SlackPayload, githubNames: string[]) {
+function openUnlinkDialog(
+  botToken: string,
+  payload: SlackPayload,
+  githubNames: string[],
+  state?: {
+    githubName?: string
+  },
+) {
   const elements = [
     {
       label: `GitHub Username`,
@@ -284,7 +321,7 @@ function openUnlinkDialog(botToken: string, payload: SlackPayload, githubNames: 
       })),
     },
   ]
-  return openConnectDialog(botToken, payload, actions.unlink, `Undo link`, elements)
+  return openConnectDialog(botToken, payload, actions.unlink, state, `Undo link`, elements)
 }
 
 export const handleOAuth: RouteHandler = async function handleOAuth(req, data) {
