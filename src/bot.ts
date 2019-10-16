@@ -26,18 +26,16 @@ const actions = {
   feedback: `feedback`,
 }
 
-const commandRegexp = /(link|unlink) ([\w-]+)/
-
-const handleCommand = (
+const handleAction = (
   workspace: string,
   githubName: string,
   slackUserID: string,
-  command: string,
+  action: string,
 ) => {
-  switch (command) {
+  switch (action) {
     case actions.link: {
       const succeeded = db.saveLink(workspace, { github: githubName, slack: slackUserID })
-      if (succeeded) return `🥳 Linked <@${slackUserID}> to ${githubName}@GitHub!`
+      if (succeeded) return `🤝 Linked <@${slackUserID}> to ${githubName}@GitHub!`
       else return `Sorry, could not link.`
     }
     case actions.unlink: {
@@ -46,22 +44,23 @@ const handleCommand = (
       else return `Sorry, unlink failed.`
     }
     default:
-      throw `unknown command ${command}`
+      throw `unknown command ${action}`
   }
 }
 
-const handleMessage: RouteHandler<string | false> = async function(req, data) {
-  const text = data.event.text
+function parseActionMessage(text?: string) {
   // not simple text message
   if (text === undefined) return false
 
+  const commandRegexp = /(link|unlink) ([\w-]+)/
   const matched = text.match(commandRegexp)
   if (!matched) return false
 
   const [, command, githubName] = matched
-  const workspace = data.team_id
-  const slackUserID = data.event.user
-  return await handleCommand(workspace, githubName, slackUserID, command)
+  return {
+    command,
+    githubName,
+  }
 }
 
 export const sendAsBot = (
@@ -112,35 +111,43 @@ const menuMessage = {
   ],
 }
 
-export const handleBotMessages: RouteHandler<{
-  challenge: string
-}> = async (req, data) => {
-  if (data.type === 'url_verification') {
-    return handleChallenge(req, data)
+export const handleBotMessages: RouteHandler = async (req, data) => {
+  switch (data.type) {
+    case 'url_verification':
+      return handleChallenge(req, data)
   }
+
   switch (data.event.subtype) {
-    case messageTypes.botMessage: {
+    case messageTypes.botMessage:
+      // ignore bot message
+      return
+  }
+
+  const workspace = data.team_id
+  const { botToken, botID } = await db.loadWorkspace(workspace)
+
+  if (botID === data.event.user) {
+    // ignore message from this app
+    return
+  }
+
+  const action = await parseActionMessage(data.event.text)
+  if (!action) {
+    // in unknown format
+    if (!data.event.user) {
+      // might be beautified message, ignore
       return
     }
-    default: {
-      const workspace = data.team_id
-      const result = await handleMessage(req, data)
-      const { botToken, botID } = await db.loadWorkspace(workspace)
-      if (botID === data.event.user) {
-        // ignore bot message
-        return
-      } else if (result === false) {
-        // in unknown format
-        if (!data.event.user) {
-          // might be beautified message
-          return
-        }
-        return sendAsBot(botToken, data.event.channel, '', menuMessage)
-      } else {
-        return sendAsBot(botToken, data.event.channel, result)
-      }
-    }
+    return sendAsBot(botToken, data.event.channel, '', menuMessage)
   }
+
+  const { command, githubName } = action
+  const slackUserID = data.event.user
+  return sendAsBot(
+    botToken,
+    data.event.channel,
+    await handleAction(workspace, githubName, slackUserID, command),
+  )
 }
 
 const types = {
@@ -227,11 +234,10 @@ export const handleInteractiveComponents: RouteHandler = async function handleIn
           user: { id: slackUserID },
           submission: { github_name: githubName },
         } = payload
-        const text = await handleCommand(workspace, githubName, slackUserID, command)
+        const responseMessage = await handleAction(workspace, githubName, slackUserID, command)
         const { botToken } = await db.loadWorkspace(workspace)
-        await sendAsBot(botToken, channel, text)
+        await sendAsBot(botToken, channel, responseMessage)
 
-        // to complete an dialog, return 200 with empty body
         return
       }
       default:
