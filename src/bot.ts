@@ -19,9 +19,10 @@ const messageTypes = {
   appMention: 'app_mention',
 }
 
-const actions = {
+export const actions = {
   getWebhook: `get-webhook`,
   link: `link`,
+  linkOtherUser: `link-other-user`,
   unlink: `unlink`,
   feedback: `feedback`,
 }
@@ -33,10 +34,11 @@ const handleAction = (
   action: string,
 ) => {
   switch (action) {
+    case actions.linkOtherUser:
     case actions.link: {
       const succeeded = db.saveLink(workspace, { github: githubName, slack: slackUserID })
       if (succeeded) return `🤝 Linked <@${slackUserID}> to ${githubName}@GitHub!`
-      else return `Sorry, could not link.`
+      else return `Oops, link failed. You may try again later.`
     }
     case actions.unlink: {
       const succeeded = db.removeLink(workspace, { github: githubName })
@@ -197,18 +199,25 @@ export const handleInteractiveComponents: RouteHandler = async function handleIn
             }
             return
           }
+          case actions.linkOtherUser: {
+            // TODO: show link other user dialog
+
+            return
+          }
           default:
             break
         }
         return
       }
       case interactiveMessageTypes.dialogSubmission: {
-        const {
-          submission: { github_name: githubName },
-        } = payload
+        const { submission = {} } = payload
         const { action, state } = parseState(payload.state)
 
-        const responseMessage = await handleAction(workspace, githubName, slackUserID, action)
+        const githubName =
+          (state && state.githubName) || submission.githubName || submission.github_name
+        const targetSlackUserID =
+          (state && state.slackUserID) || submission.slackUserID || slackUserID
+        const responseMessage = await handleAction(workspace, githubName, targetSlackUserID, action)
         const { botToken } = await db.loadWorkspace(workspace)
         await sendAsBot(botToken, channelID, responseMessage)
 
