@@ -1,6 +1,6 @@
 import { IncomingMessage } from '../extra'
 import { getURL, RouteHandler } from './'
-import { sendAsBot } from './bot'
+import { actions, sendAsBot } from './bot'
 import * as db from './db'
 
 const GITHUB_EVENT_HEADER_KEY = 'X-GitHub-Event'
@@ -26,12 +26,33 @@ const getWorkspace = (req: IncomingMessage) => {
   return workspace
 }
 
+const menuForLinkingOthers = (githubName: string) => ({
+  attachments: [
+    {
+      text: `If the user of ${githubName} is in this workspace, you can set up link for the user.`,
+      fallback: 'Something went wrong.',
+      callback_id: 'link_for_others',
+      color: '#3AA3E3',
+      attachment_type: 'default',
+      actions: [
+        {
+          text: `Link for ${githubName}`,
+          type: 'button',
+          name: actions.linkOtherUser,
+          value: JSON.stringify({ githubName }),
+        },
+      ],
+    },
+  ],
+})
+
 export const handleGitHubHook: RouteHandler = async (req, data) => {
   // handle application/x-www-form-urlencoded data
   if (data.payload) data = JSON.parse(data.payload)
 
   const workspace = getWorkspace(req)
   const type = getHeader(req, GITHUB_EVENT_HEADER_KEY)
+  if (!type) throw Error(`no github event header provided`)
   switch (type) {
     case GITHUB_EVENT_TYPES.PING:
       return `I'm ready!`
@@ -49,6 +70,7 @@ export const handleGitHubHook: RouteHandler = async (req, data) => {
           gitHubNameToSlackID(workspace, requesterGitHubName),
           gitHubNameToSlackID(workspace, reviewerGitHubName),
         ])
+        // I know below part is quite verbose, but I won't simplify
         if (reviewerUserID && requesterUserID) {
           // both registered
           const text = `🧐 ${requesterGitHubName}(<@${requesterUserID}>) requested code review from ${reviewerGitHubName}(<@${reviewerUserID}>):\n${pullRequestURL}`
@@ -59,11 +81,21 @@ export const handleGitHubHook: RouteHandler = async (req, data) => {
         } else if (reviewerUserID) {
           // only reviewer registered
           const text = `🧐 ${requesterGitHubName}(<@${requesterUserID}>) requested code review from ${reviewerGitHubName}(<@${reviewerUserID}>):\n${pullRequestURL}\n\nNote: ${requesterGitHubName} has not been linked to this workspace yet.`
-          return sendAsBot(botToken, reviewerUserID, text)
+          return sendAsBot(
+            botToken,
+            reviewerUserID,
+            text,
+            menuForLinkingOthers(requesterGitHubName),
+          )
         } else if (requesterUserID) {
           // only requestor registered
           const text = `🧐 ${requesterGitHubName}(<@${requesterUserID}>) requested code review from ${reviewerGitHubName}(<@${reviewerUserID}>):\n${pullRequestURL}\n\nNote: ${reviewerGitHubName} has not been linked to this workspace yet.`
-          return sendAsBot(botToken, requesterUserID, text)
+          return sendAsBot(
+            botToken,
+            requesterUserID,
+            text,
+            menuForLinkingOthers(reviewerGitHubName),
+          )
         } else {
           console.log(`could not find users for`, requesterGitHubName, `and`, reviewerGitHubName)
         }
@@ -130,7 +162,6 @@ export const handleGitHubHook: RouteHandler = async (req, data) => {
           return 'unresolved action'
       }
     default:
-      if (!type) throw Error(`no github event header provided`)
       return `no handler for this event type`
   }
 }

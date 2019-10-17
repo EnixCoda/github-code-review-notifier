@@ -22,8 +22,8 @@ Click `Link` in the menu to link your GitHub account to the Slack workspace. Onl
 
 ### Connect GitHub projects
 
-You can click `Get webhook URL for GitHub` in the menu to connect your GitHub projects.
+You can click `Setup GitHub projects` in the menu to get a webhook for connecting your GitHub projects.
 
-- [How to create GitHub webhook?](https://developer.github.com/webhooks/creating/)
+- [How to use GitHub webhook?](https://developer.github.com/webhooks/creating/)
 - The events sent to it should at least include `Pull requests` and `Pull request reviews`. Or `Send me everything` for easier setup.
 - The URL is bound to the workspace. And multiple projects can share one URL in one Slack workspace.
