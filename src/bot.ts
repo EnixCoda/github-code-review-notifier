@@ -155,7 +155,6 @@ export const handleInteractiveComponents: RouteHandler = async function handleIn
           }
           case actions.link:
           case actions.unlink: {
-            const { botToken } = await db.loadWorkspace(workspace)
             const links = await db.loadLinks(workspace, { slack: slackUserID })
             const githubNames = links ? links.map(({ github }) => github) : null
 
@@ -167,10 +166,10 @@ export const handleInteractiveComponents: RouteHandler = async function handleIn
                   `👻 Hi <@${slackUserID}>, you are not linked to any GitHub users yet. You can get started by clicking "Link to GitHub" on the left.`,
                 )
               } else {
-                await openUnlinkDialog(botToken, payload, githubNames)
+                await openUnlinkDialog(workspace, payload, githubNames)
               }
             } else {
-              await openLinkDialog(botToken, payload, githubNames || undefined, state)
+              await openLinkDialog(workspace, payload, githubNames || undefined, state)
             }
             return
           }
@@ -178,8 +177,7 @@ export const handleInteractiveComponents: RouteHandler = async function handleIn
             const { githubName } = state
             if (typeof githubName !== 'string') throw new Error('Unexpected state')
 
-            const { botToken } = await db.loadWorkspace(workspace)
-            await openLinkForOtherDialog(botToken, payload, githubName, { githubName })
+            await openLinkForOtherDialog(workspace, payload, githubName, { githubName })
 
             return
           }
@@ -269,13 +267,14 @@ function parseState(state: string) {
 }
 
 async function openSlackDialog(
-  botToken: string,
+  workspace: string,
   payload: SlackPayload,
   action: string,
   state: ExpectedAny,
   title: string,
   elements: SlackElement,
 ) {
+  const { botToken } = await db.loadWorkspace(workspace)
   const { ok } = await Slack.dialog.open({
     token: botToken,
     trigger_id: payload.trigger_id,
@@ -294,7 +293,7 @@ async function openSlackDialog(
 }
 
 function openLinkForOtherDialog(
-  botToken: string,
+  workspace: string,
   payload: any,
   githubName: string,
   state: { githubName: string },
@@ -309,7 +308,7 @@ function openLinkForOtherDialog(
     },
   ]
   return openSlackDialog(
-    botToken,
+    workspace,
     payload,
     actions.linkOtherUser,
     state,
@@ -319,7 +318,7 @@ function openLinkForOtherDialog(
 }
 
 function openLinkDialog(
-  botToken: string,
+  workspace: string,
   payload: SlackPayload,
   githubNames?: string[],
   state?: {
@@ -339,11 +338,11 @@ function openLinkDialog(
       max_length: 24,
     },
   ]
-  return openSlackDialog(botToken, payload, actions.link, state, `Link to GitHub`, elements)
+  return openSlackDialog(workspace, payload, actions.link, state, `Link to GitHub`, elements)
 }
 
 function openUnlinkDialog(
-  botToken: string,
+  workspace: string,
   payload: SlackPayload,
   githubNames: string[],
   state?: {
@@ -362,7 +361,7 @@ function openUnlinkDialog(
       })),
     },
   ]
-  return openSlackDialog(botToken, payload, actions.unlink, state, `Undo link`, elements)
+  return openSlackDialog(workspace, payload, actions.unlink, state, `Undo link`, elements)
 }
 
 export const handleOAuth: RouteHandler = async function handleOAuth(req, data) {
