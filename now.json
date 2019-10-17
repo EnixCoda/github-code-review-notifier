@@ -1,6 +1,8 @@
 {
   "name": "github-code-review-notifier",
   "env": {
+    "SENTRY_PUBLIC_KEY": "@sentry_public_key",
+    "SENTRY_PROJECT_ID": "@sentry_project_id",
     "FIREBASE": "@firebase",
     "VERIFICATION_TOKEN": "@verification_token",
     "CLIENT_SECRET": "@client_secret",
