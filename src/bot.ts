@@ -4,6 +4,7 @@ import { paths } from '../api/paths'
 import { getURL, RouteHandler } from './'
 import { clientID, clientSecret, verificationToken } from './config'
 import * as db from './db'
+import { githubUserPageLink, mention } from './format'
 
 function generateWebhookURL(host: string, workspace: string) {
   return `https://${host}${paths.GitHub}?workspace=${workspace}`
@@ -163,7 +164,9 @@ export const handleInteractiveComponents: RouteHandler = async function handleIn
                 await botSpeak(
                   workspace,
                   channelID,
-                  `👻 Hi <@${slackUserID}>, you are not linked to any GitHub users yet. You can get started by clicking "Link to GitHub" on the left.`,
+                  `👻 Hi ${mention(
+                    slackUserID,
+                  )}, you are not linked to any GitHub users yet. You can get started by clicking "Link to GitHub" on the left.`,
                 )
               } else {
                 await openUnlinkDialog(workspace, payload, githubNames)
@@ -207,14 +210,18 @@ export const handleInteractiveComponents: RouteHandler = async function handleIn
               slack: targetSlackUserID,
             })
             if (succeeded)
-              responseMessage = `🤝 Linked <@${targetSlackUserID}> to <https://github.com/${githubName}|${githubName}>!`
+              responseMessage = `🤝 Linked ${mention(targetSlackUserID)} to ${githubUserPageLink(
+                githubName,
+              )}!`
             else responseMessage = `Oops, link failed. You may try again later.`
             break
           }
           case actions.unlink: {
             const succeeded = await db.removeLink(workspace, { github: githubName })
             if (succeeded)
-              responseMessage = `👋 Unlinked <@${targetSlackUserID}> from <https://github.com/${githubName}|${githubName}>!`
+              responseMessage = `👋 Unlinked ${mention(
+                targetSlackUserID,
+              )} from ${githubUserPageLink(githubName)}!`
             else responseMessage = `Sorry, unlink failed.`
             break
           }
