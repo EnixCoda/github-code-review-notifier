@@ -184,8 +184,6 @@ export const handleInteractiveComponents: RouteHandler = async function handleIn
 
             if (action === actions.unlink) {
               if (!githubNames) {
-                const { botToken } = await db.loadWorkspace(workspace)
-
                 await sendAsBot(
                   botToken,
                   channelID,
@@ -232,7 +230,9 @@ export const handleInteractiveComponents: RouteHandler = async function handleIn
 }
 
 function createInitialState(name: string, value: string) {
-  const state = {}
+  const state: {
+    [key: string]: ExpectedAny
+  } = {}
   if (Object.values(actions).includes(value)) {
     // legacy message, leave state empty
   } else {
@@ -261,7 +261,7 @@ function parseState(state: string) {
   }
 }
 
-async function openConnectDialog(
+async function openSlackDialog(
   botToken: string,
   payload: SlackPayload,
   action: string,
@@ -307,7 +307,7 @@ function openLinkDialog(
       max_length: 24,
     },
   ]
-  return openConnectDialog(botToken, payload, actions.link, state, `Link to GitHub`, elements)
+  return openSlackDialog(botToken, payload, actions.link, state, `Link to GitHub`, elements)
 }
 
 function openUnlinkDialog(
@@ -330,7 +330,7 @@ function openUnlinkDialog(
       })),
     },
   ]
-  return openConnectDialog(botToken, payload, actions.unlink, state, `Undo link`, elements)
+  return openSlackDialog(botToken, payload, actions.unlink, state, `Undo link`, elements)
 }
 
 export const handleOAuth: RouteHandler = async function handleOAuth(req, data) {
