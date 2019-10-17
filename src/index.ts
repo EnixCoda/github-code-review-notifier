@@ -1,6 +1,6 @@
 import { URL } from 'url'
 import { IncomingMessage, RequestListener } from '../extra'
-import { logRequestOnError } from './config'
+import { decodePayload, logRequestOnError } from './config'
 import { log } from './db'
 
 export type Route = {
@@ -76,6 +76,13 @@ export const requestHandler: (handler: RouteHandler) => RequestListener = handle
     res.end(result ? JSON.stringify(result) : undefined)
   } catch (err) {
     console.error(err)
+    if (decodePayload) {
+      if (typeof data === 'object' && data !== null && typeof data.payload === 'string') {
+        try {
+          data.payload = JSON.parse(decodeURIComponent(data.payload))
+        } catch (err) {}
+      }
+    }
     if (logRequestOnError) {
       log({
         time: new Date().toLocaleString('US'),

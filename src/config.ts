@@ -19,3 +19,4 @@ export const clientSecret = CLIENT_SECRET
 export const signingSecret = SIGNING_SECRET
 export const clientID = CLIENT_ID
 export const logRequestOnError = LOG_REQUEST_ON_ERROR === 'true'
+export const decodePayload = true
