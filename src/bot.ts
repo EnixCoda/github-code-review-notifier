@@ -198,7 +198,26 @@ export const handleInteractiveComponents: RouteHandler = async function handleIn
             return
           }
           case actions.linkOtherUser: {
-            // TODO: show link other user dialog
+            const { githubName } = state
+            if (typeof githubName !== 'string') throw new Error('Unexpected state')
+
+            const { botToken } = await db.loadWorkspace(workspace)
+            openSlackDialog(
+              botToken,
+              payload,
+              actions.linkOtherUser,
+              state,
+              `Link for ${githubName}`,
+              [
+                {
+                  label: `User of ${githubName}`,
+                  name: 'slackUser',
+                  type: 'select',
+                  hint: `Which Slack user owns ${githubName} on GitHub?`,
+                  data_source: 'users',
+                },
+              ],
+            )
 
             return
           }
@@ -213,8 +232,13 @@ export const handleInteractiveComponents: RouteHandler = async function handleIn
 
         const githubName =
           (state && state.githubName) || submission.githubName || submission.github_name
+        if (submission.slackUserID) {
+          console.log
+        }
         const targetSlackUserID =
-          (state && state.slackUserID) || submission.slackUserID || slackUserID
+          (state && state.slackUserID) ||
+          (submission.slackUser && submission.slackUser.id) ||
+          slackUserID
         const responseMessage = await handleAction(workspace, githubName, targetSlackUserID, action)
         const { botToken } = await db.loadWorkspace(workspace)
         await sendAsBot(botToken, channelID, responseMessage)
