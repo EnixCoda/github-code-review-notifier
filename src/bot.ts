@@ -217,13 +217,15 @@ export const handleInteractiveComponents: RouteHandler = async function handleIn
 
         const githubName =
           (state && state.githubName) || submission.githubName || submission.github_name
-        if (submission.slackUserID) {
-          console.log
-        }
         const targetSlackUserID =
           (state && state.slackUserID) ||
           (submission.slackUser && submission.slackUser.id) ||
           slackUserID
+
+        if ([actions.linkOtherUser, actions.link].includes(action)) {
+          // TODO: prevent duplication
+        }
+
         const responseMessage = await handleAction(workspace, githubName, targetSlackUserID, action)
         const { botToken } = await db.loadWorkspace(workspace)
         await sendAsBot(botToken, channelID, responseMessage)
