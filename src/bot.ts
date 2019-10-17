@@ -27,15 +27,17 @@ export const actions = {
   feedback: `feedback`,
 }
 
-export const sendAsBot = (
-  botToken: string,
+export async function botSpeak(
+  workspace: string,
   channel: string,
   text: string,
   extra?: Partial<Chat.PostMessage.Params>,
-) =>
-  Slack.chat
+) {
+  const { botToken } = await db.loadWorkspace(workspace)
+  return Slack.chat
     .postMessage(Object.assign({ as_user: true, token: botToken, channel, text }, extra))
     .then(({ ok }) => ok)
+}
 
 const mainMenuActions = [
   {
@@ -77,7 +79,7 @@ export const handleBotMessages: RouteHandler = async (req, data) => {
   }
 
   const workspace = data.team_id
-  const { botToken, botID } = await db.loadWorkspace(workspace)
+  const { botID } = await db.loadWorkspace(workspace)
 
   if (botID === data.event.user) {
     // ignore message from this app
@@ -89,7 +91,7 @@ export const handleBotMessages: RouteHandler = async (req, data) => {
     return
   }
 
-  await sendAsBot(botToken, data.event.channel, '', {
+  await botSpeak(workspace, data.event.channel, '', {
     attachments: [
       {
         text: 'Hi, I can do these for you, check them out!',
@@ -134,9 +136,8 @@ export const handleInteractiveComponents: RouteHandler = async function handleIn
 
         switch (action) {
           case actions.feedback: {
-            const { botToken } = await db.loadWorkspace(workspace)
-            await sendAsBot(
-              botToken,
+            await botSpeak(
+              workspace,
               channelID,
               `📝 If you have any question, feature request or bug report, please <https://github.com/EnixCoda/github-code-review-notifier/issues/new|draft an issue>.`,
             )
@@ -145,9 +146,8 @@ export const handleInteractiveComponents: RouteHandler = async function handleIn
           case actions.getWebhook: {
             const url = getURL(req)
             const webhook = generateWebhookURL(url.host, workspace)
-            const { botToken } = await db.loadWorkspace(workspace)
-            await sendAsBot(
-              botToken,
+            await botSpeak(
+              workspace,
               channelID,
               `🔧 Please setup your GitHub projects with this webhook:\n${webhook}\n\nNeed help? Read the <https://enixcoda.github.io/github-code-review-notifier/#connect-github-projects|connect GitHub projects> section.`,
             )
@@ -161,8 +161,8 @@ export const handleInteractiveComponents: RouteHandler = async function handleIn
 
             if (action === actions.unlink) {
               if (!githubNames) {
-                await sendAsBot(
-                  botToken,
+                await botSpeak(
+                  workspace,
                   channelID,
                   `👻 Hi <@${slackUserID}>, you are not linked to any GitHub users yet. You can get started by clicking "Link to GitHub" on the left.`,
                 )
@@ -224,8 +224,7 @@ export const handleInteractiveComponents: RouteHandler = async function handleIn
             throw `unknown command ${action}`
         }
 
-        const { botToken } = await db.loadWorkspace(workspace)
-        await sendAsBot(botToken, channelID, responseMessage)
+        await botSpeak(workspace, channelID, responseMessage)
 
         return
       }

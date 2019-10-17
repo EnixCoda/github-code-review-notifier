@@ -1,6 +1,6 @@
 import { IncomingMessage } from '../extra'
 import { getURL, RouteHandler } from './'
-import { actions, sendAsBot } from './bot'
+import { actions, botSpeak } from './bot'
 import * as db from './db'
 
 const GITHUB_EVENT_HEADER_KEY = 'X-GitHub-Event'
@@ -65,8 +65,7 @@ export const handleGitHubHook: RouteHandler = async (req, data) => {
           html_url: pullRequestURL,
         } = pullRequest
         const { login: reviewerGitHubName } = requestedReviewer
-        const [{ botToken }, requesterUserID, reviewerUserID] = await Promise.all([
-          db.loadWorkspace(workspace),
+        const [requesterUserID, reviewerUserID] = await Promise.all([
           gitHubNameToSlackID(workspace, requesterGitHubName),
           gitHubNameToSlackID(workspace, reviewerGitHubName),
         ])
@@ -75,14 +74,14 @@ export const handleGitHubHook: RouteHandler = async (req, data) => {
           // both registered
           const text = `🧐 ${requesterGitHubName}(<@${requesterUserID}>) requested code review from ${reviewerGitHubName}(<@${reviewerUserID}>):\n${pullRequestURL}`
           return Promise.all([
-            sendAsBot(botToken, requesterUserID, text),
-            sendAsBot(botToken, reviewerUserID, text),
+            botSpeak(workspace, requesterUserID, text),
+            botSpeak(workspace, reviewerUserID, text),
           ]).then(() => true)
         } else if (reviewerUserID) {
           // only reviewer registered
           const text = `🧐 ${requesterGitHubName}(<@${requesterUserID}>) requested code review from ${reviewerGitHubName}(<@${reviewerUserID}>):\n${pullRequestURL}\n\nNote: ${requesterGitHubName} has not been linked to this workspace yet.`
-          return sendAsBot(
-            botToken,
+          return botSpeak(
+            workspace,
             reviewerUserID,
             text,
             menuForLinkingOthers(requesterGitHubName),
@@ -90,8 +89,8 @@ export const handleGitHubHook: RouteHandler = async (req, data) => {
         } else if (requesterUserID) {
           // only requestor registered
           const text = `🧐 ${requesterGitHubName}(<@${requesterUserID}>) requested code review from ${reviewerGitHubName}(<@${reviewerUserID}>):\n${pullRequestURL}\n\nNote: ${reviewerGitHubName} has not been linked to this workspace yet.`
-          return sendAsBot(
-            botToken,
+          return botSpeak(
+            workspace,
             requesterUserID,
             text,
             menuForLinkingOthers(reviewerGitHubName),
@@ -119,8 +118,7 @@ export const handleGitHubHook: RouteHandler = async (req, data) => {
             // self comment, ignore
             return
           }
-          const [{ botToken }, requesterUserID, reviewerUserID] = await Promise.all([
-            db.loadWorkspace(workspace),
+          const [requesterUserID, reviewerUserID] = await Promise.all([
             gitHubNameToSlackID(workspace, requesterGitHubName),
             gitHubNameToSlackID(workspace, reviewerGitHubName),
           ])
@@ -132,8 +130,8 @@ export const handleGitHubHook: RouteHandler = async (req, data) => {
           if (state === 'approved') {
             // approvement message, notify requestor
             if (requesterUserID) {
-              return sendAsBot(
-                botToken,
+              return botSpeak(
+                workspace,
                 requesterUserID,
                 `🎉 Your pull request has been approved!\n${reviewUrl}`,
               )
@@ -151,7 +149,7 @@ export const handleGitHubHook: RouteHandler = async (req, data) => {
                   `\n\nNote: ${gitHubName} has not been linked to this workspace yet.`
                 text += linkNotify(reviewerGitHubName)
               }
-              return sendAsBot(botToken, requesterUserID, text)
+              return botSpeak(workspace, requesterUserID, text)
             } else if (reviewerUserID) {
               // we could ask reviewer to introduce this app to PR requester here, but not now
             } else {
