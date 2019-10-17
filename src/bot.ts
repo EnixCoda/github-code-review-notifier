@@ -37,12 +37,14 @@ const handleAction = (
     case actions.linkOtherUser:
     case actions.link: {
       const succeeded = db.saveLink(workspace, { github: githubName, slack: slackUserID })
-      if (succeeded) return `🤝 Linked <@${slackUserID}> to ${githubName}@GitHub!`
+      if (succeeded)
+        return `🤝 Linked <@${slackUserID}> to <https://github.com/${githubName}|${githubName}>!`
       else return `Oops, link failed. You may try again later.`
     }
     case actions.unlink: {
       const succeeded = db.removeLink(workspace, { github: githubName })
-      if (succeeded) return `👋 Unlinked <@${slackUserID}> from ${githubName}@GitHub!`
+      if (succeeded)
+        return `👋 Unlinked <@${slackUserID}> from <https://github.com/${githubName}|${githubName}>!`
       else return `Sorry, unlink failed.`
     }
     default:
