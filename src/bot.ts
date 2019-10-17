@@ -27,31 +27,6 @@ export const actions = {
   feedback: `feedback`,
 }
 
-const handleAction = (
-  workspace: string,
-  githubName: string,
-  slackUserID: string,
-  action: string,
-) => {
-  switch (action) {
-    case actions.linkOtherUser:
-    case actions.link: {
-      const succeeded = db.saveLink(workspace, { github: githubName, slack: slackUserID })
-      if (succeeded)
-        return `🤝 Linked <@${slackUserID}> to <https://github.com/${githubName}|${githubName}>!`
-      else return `Oops, link failed. You may try again later.`
-    }
-    case actions.unlink: {
-      const succeeded = db.removeLink(workspace, { github: githubName })
-      if (succeeded)
-        return `👋 Unlinked <@${slackUserID}> from <https://github.com/${githubName}|${githubName}>!`
-      else return `Sorry, unlink failed.`
-    }
-    default:
-      throw `unknown command ${action}`
-  }
-}
-
 export const sendAsBot = (
   botToken: string,
   channel: string,
@@ -224,11 +199,31 @@ export const handleInteractiveComponents: RouteHandler = async function handleIn
           (submission.slackUser && submission.slackUser.id) ||
           slackUserID
 
-        if ([actions.linkOtherUser, actions.link].includes(action)) {
-          // TODO: prevent duplication
+        let responseMessage: string
+        switch (action) {
+          case actions.linkOtherUser:
+          case actions.link: {
+            // TODO: prevent duplication
+            const succeeded = await db.saveLink(workspace, {
+              github: githubName,
+              slack: targetSlackUserID,
+            })
+            if (succeeded)
+              responseMessage = `🤝 Linked <@${targetSlackUserID}> to <https://github.com/${githubName}|${githubName}>!`
+            else responseMessage = `Oops, link failed. You may try again later.`
+            break
+          }
+          case actions.unlink: {
+            const succeeded = await db.removeLink(workspace, { github: githubName })
+            if (succeeded)
+              responseMessage = `👋 Unlinked <@${targetSlackUserID}> from <https://github.com/${githubName}|${githubName}>!`
+            else responseMessage = `Sorry, unlink failed.`
+            break
+          }
+          default:
+            throw `unknown command ${action}`
         }
 
-        const responseMessage = await handleAction(workspace, githubName, targetSlackUserID, action)
         const { botToken } = await db.loadWorkspace(workspace)
         await sendAsBot(botToken, channelID, responseMessage)
 
