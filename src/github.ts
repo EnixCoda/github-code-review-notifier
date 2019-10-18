@@ -104,7 +104,7 @@ export const handleGitHubHook: RouteHandler = async (req, data) => {
 
         const formattedPRLink = slackLink(
           pullRequestURL,
-          `${repoName}: ${pullRequestTitle}#${number}`,
+          `#${number} ${pullRequestTitle.replace(/\+/g, ' ')} in ${repoName}`,
         )
         const mainContent = `🧐 ${requesterGitHubName}(${mention(
           requesterUserID,
