@@ -71,9 +71,11 @@ export function removeLink(workspace: string, { github }: Pick<GSLink, 'github'>
     .once('value')
     .then(snapshot => {
       if (snapshot.exists()) {
-        return snapshot.forEach(child => {
-          child.ref.remove().then(() => true)
+        const promisesOfRemove: Promise<boolean>[] = []
+        snapshot.forEach(child => {
+          promisesOfRemove.push(child.ref.remove())
         })
+        return Promise.all(promisesOfRemove).then(() => true)
       }
       return true
     })
