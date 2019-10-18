@@ -119,13 +119,15 @@ export const handleGitHubHook: RouteHandler = async (req, data) => {
           : mainContent
 
         return Promise.all(
-          linkedUsers.map(({ slackUserID }) =>
-            Promise.all(
-              notLinkedGitHubNames.map(githubName =>
-                botSpeak(workspace, slackUserID, text, menuForLinkingOthers(githubName)),
-              ),
-            ),
-          ),
+          linkedUsers.map(({ slackUserID }) => {
+            if (notLinkedGitHubNames.length === 0) {
+              return botSpeak(workspace, slackUserID, text)
+            } else if (notLinkedGitHubNames.length === 1) {
+              const [githubName] = notLinkedGitHubNames
+              return botSpeak(workspace, slackUserID, text, menuForLinkingOthers(githubName))
+            }
+            throw new Error('Cannot handle multiple not linked users yet.')
+          }),
         )
       } else {
         return 'unresolved action'
