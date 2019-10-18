@@ -4,6 +4,7 @@ import { paths } from '../api/paths'
 import { getURL, RouteHandler } from './'
 import { clientID, clientSecret, verificationToken } from './config'
 import * as db from './db'
+import { githubUserPageLink, mention, slackLink } from './format'
 
 function generateWebhookURL(host: string, workspace: string) {
   return `https://${host}${paths.GitHub}?workspace=${workspace}`
@@ -139,7 +140,10 @@ export const handleInteractiveComponents: RouteHandler = async function handleIn
             await botSpeak(
               workspace,
               channelID,
-              `📝 If you have any question, feature request or bug report, please <https://github.com/EnixCoda/github-code-review-notifier/issues/new|draft an issue>.`,
+              `📝 If you have any question, feature request or bug report, please ${slackLink(
+                'https://github.com/EnixCoda/github-code-review-notifier/issues/new',
+                'draft an issue',
+              )}.`,
             )
             return
           }
@@ -149,7 +153,10 @@ export const handleInteractiveComponents: RouteHandler = async function handleIn
             await botSpeak(
               workspace,
               channelID,
-              `🔧 Please setup your GitHub projects with this webhook:\n${webhook}\n\nNeed help? Read the <https://enixcoda.github.io/github-code-review-notifier/#connect-github-projects|connect GitHub projects> section.`,
+              `🔧 Please setup your GitHub projects with this webhook:\n${webhook}\n\nNeed help? Read the ${slackLink(
+                'https://enixcoda.github.io/github-code-review-notifier/#connect-github-projects',
+                'connect GitHub projects',
+              )} section.`,
             )
             return
           }
@@ -163,7 +170,9 @@ export const handleInteractiveComponents: RouteHandler = async function handleIn
                 await botSpeak(
                   workspace,
                   channelID,
-                  `👻 Hi <@${slackUserID}>, you are not linked to any GitHub users yet. You can get started by clicking "Link to GitHub" on the left.`,
+                  `👻 Hi ${mention(
+                    slackUserID,
+                  )}, you are not linked to any GitHub users yet. You can get started by clicking "Link to GitHub" on the left.`,
                 )
               } else {
                 await openUnlinkDialog(workspace, payload, githubNames)
@@ -207,14 +216,18 @@ export const handleInteractiveComponents: RouteHandler = async function handleIn
               slack: targetSlackUserID,
             })
             if (succeeded)
-              responseMessage = `🤝 Linked <@${targetSlackUserID}> to <https://github.com/${githubName}|${githubName}>!`
+              responseMessage = `🤝 Linked ${mention(targetSlackUserID)} to ${githubUserPageLink(
+                githubName,
+              )}!`
             else responseMessage = `Oops, link failed. You may try again later.`
             break
           }
           case actions.unlink: {
             const succeeded = await db.removeLink(workspace, { github: githubName })
             if (succeeded)
-              responseMessage = `👋 Unlinked <@${targetSlackUserID}> from <https://github.com/${githubName}|${githubName}>!`
+              responseMessage = `👋 Unlinked ${mention(
+                targetSlackUserID,
+              )} from ${githubUserPageLink(githubName)}!`
             else responseMessage = `Sorry, unlink failed.`
             break
           }

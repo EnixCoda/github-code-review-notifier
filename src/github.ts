@@ -2,6 +2,7 @@ import { IncomingMessage } from '../extra'
 import { getURL, RouteHandler } from './'
 import { actions, botSpeak } from './bot'
 import * as db from './db'
+import { mention, slackLink } from './format'
 
 const GITHUB_EVENT_HEADER_KEY = 'X-GitHub-Event'
 
@@ -58,46 +59,76 @@ export const handleGitHubHook: RouteHandler = async (req, data) => {
       return `I'm ready!`
     case GITHUB_EVENT_TYPES.PULL_REQUEST:
       if (data['action'] === GITHUB_EVENT_ACTION_TYPES.REVIEW_REQUESTED) {
-        const pullRequest = data['pull_request']
-        const requestedReviewer = data['requested_reviewer']
+        const { full_name: repoName } = data['repository']
+        const { login: reviewerGitHubName } = data['requested_reviewer']
         const {
           user: { login: requesterGitHubName },
           html_url: pullRequestURL,
-        } = pullRequest
-        const { login: reviewerGitHubName } = requestedReviewer
+          title: pullRequestTitle,
+          number,
+        } = data['pull_request']
+
         const [requesterUserID, reviewerUserID] = await Promise.all([
-          gitHubNameToSlackID(workspace, requesterGitHubName),
-          gitHubNameToSlackID(workspace, reviewerGitHubName),
+          githubNameToSlackID(workspace, requesterGitHubName),
+          githubNameToSlackID(workspace, reviewerGitHubName),
         ])
-        // I know below part is quite verbose, but I won't simplify
-        if (reviewerUserID && requesterUserID) {
-          // both registered
-          const text = `🧐 ${requesterGitHubName}(<@${requesterUserID}>) requested code review from ${reviewerGitHubName}(<@${reviewerUserID}>):\n${pullRequestURL}`
-          return Promise.all([
-            botSpeak(workspace, requesterUserID, text),
-            botSpeak(workspace, reviewerUserID, text),
-          ]).then(() => true)
-        } else if (reviewerUserID) {
-          // only reviewer registered
-          const text = `🧐 ${requesterGitHubName}(<@${requesterUserID}>) requested code review from ${reviewerGitHubName}(<@${reviewerUserID}>):\n${pullRequestURL}\n\nNote: ${requesterGitHubName} has not been linked to this workspace yet.`
-          return botSpeak(
-            workspace,
-            reviewerUserID,
-            text,
-            menuForLinkingOthers(requesterGitHubName),
-          )
-        } else if (requesterUserID) {
-          // only requestor registered
-          const text = `🧐 ${requesterGitHubName}(<@${requesterUserID}>) requested code review from ${reviewerGitHubName}(<@${reviewerUserID}>):\n${pullRequestURL}\n\nNote: ${reviewerGitHubName} has not been linked to this workspace yet.`
-          return botSpeak(
-            workspace,
-            requesterUserID,
-            text,
-            menuForLinkingOthers(reviewerGitHubName),
-          )
-        } else {
-          console.log(`could not find users for`, requesterGitHubName, `and`, reviewerGitHubName)
+
+        type Pair = {
+          slackUserID: string
+          githubName: string
         }
+        const pairs = [
+          {
+            slackUserID: reviewerUserID,
+            githubName: reviewerGitHubName,
+          },
+          {
+            slackUserID: requesterUserID,
+            githubName: requesterGitHubName,
+          },
+        ]
+        const linkedUsers: Pair[] = []
+        const notLinkedGitHubNames: string[] = []
+        pairs.forEach(pair => {
+          if (pair.slackUserID) {
+            linkedUsers.push(pair as Pair) // it's safe
+          } else {
+            notLinkedGitHubNames.push(pair.githubName)
+          }
+        })
+
+        if (linkedUsers.length === 0) {
+          console.log(`could not find users for`, requesterGitHubName, `nor`, reviewerGitHubName)
+          return
+        }
+
+        const formattedPRLink = slackLink(
+          pullRequestURL,
+          `#${number} ${pullRequestTitle.replace(/\+/g, ' ')} in ${repoName}`,
+        )
+        const mainContent = `🧐 ${requesterGitHubName}(${mention(
+          requesterUserID,
+        )}) requested code review from ${reviewerGitHubName}(${mention(
+          reviewerUserID,
+        )}):\n${formattedPRLink}`
+
+        const text = notLinkedGitHubNames.length
+          ? `${mainContent}\n\nNote: ${notLinkedGitHubNames.join(
+              ', ',
+            )} has not been linked to this workspace yet.`
+          : mainContent
+
+        return Promise.all(
+          linkedUsers.map(({ slackUserID }) => {
+            if (notLinkedGitHubNames.length === 0) {
+              return botSpeak(workspace, slackUserID, text)
+            } else if (notLinkedGitHubNames.length === 1) {
+              const [githubName] = notLinkedGitHubNames
+              return botSpeak(workspace, slackUserID, text, menuForLinkingOthers(githubName))
+            }
+            throw new Error('Cannot handle multiple not linked users yet.')
+          }),
+        )
       } else {
         return 'unresolved action'
       }
@@ -119,8 +150,8 @@ export const handleGitHubHook: RouteHandler = async (req, data) => {
             return
           }
           const [requesterUserID, reviewerUserID] = await Promise.all([
-            gitHubNameToSlackID(workspace, requesterGitHubName),
-            gitHubNameToSlackID(workspace, reviewerGitHubName),
+            githubNameToSlackID(workspace, requesterGitHubName),
+            githubNameToSlackID(workspace, reviewerGitHubName),
           ])
           if (!requesterUserID && !reviewerUserID) {
             console.log(
@@ -143,10 +174,14 @@ export const handleGitHubHook: RouteHandler = async (req, data) => {
           } else {
             // review message
             if (requesterUserID) {
-              let text = `👏 ${requesterGitHubName}(<@${requesterUserID}>)'s pull request has been reviewed by ${reviewerGitHubName}(<@${reviewerUserID}>)\n${reviewUrl}`
+              let text = `👏 ${requesterGitHubName}(${mention(
+                requesterUserID,
+              )})'s pull request has been reviewed by ${reviewerGitHubName}(${mention(
+                reviewerUserID,
+              )})\n${reviewUrl}`
               if (!reviewerUserID) {
-                const linkNotify = (gitHubName: string) =>
-                  `\n\nNote: ${gitHubName} has not been linked to this workspace yet.`
+                const linkNotify = (githubName: string) =>
+                  `\n\nNote: ${githubName} has not been linked to this workspace yet.`
                 text += linkNotify(reviewerGitHubName)
               }
               return botSpeak(workspace, requesterUserID, text)
@@ -163,7 +198,7 @@ export const handleGitHubHook: RouteHandler = async (req, data) => {
       return `no handler for this event type`
   }
 }
-function gitHubNameToSlackID(workspace: string, githubName: string): Promise<string | null> {
+function githubNameToSlackID(workspace: string, githubName: string): Promise<string | null> {
   return db
     .loadLinks(workspace, { github: githubName })
     .then(links => (links ? links[0].slack : null))

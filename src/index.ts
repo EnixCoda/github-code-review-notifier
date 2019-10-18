@@ -1,7 +1,19 @@
+import * as Sentry from '@sentry/node'
 import { URL } from 'url'
 import { IncomingMessage, RequestListener } from '../extra'
-import { logRequestOnError } from './config'
+import {
+  decodePayload,
+  IN_PRODUCTION_MODE,
+  logRequestOnError,
+  sentryProjectId,
+  sentryPublicKey,
+} from './config'
 import { log } from './db'
+
+Sentry.init({
+  dsn: `https://${sentryPublicKey}@sentry.io/${sentryProjectId}`,
+  environment: IN_PRODUCTION_MODE ? 'production' : 'development',
+})
 
 export type Route = {
   path: string
@@ -68,7 +80,7 @@ export const requestHandler: (handler: RouteHandler) => RequestListener = handle
   req,
   res,
 ) => {
-  let data
+  let data: ExpectedAny
   let result
   try {
     data = await parseContent(req)
@@ -76,7 +88,19 @@ export const requestHandler: (handler: RouteHandler) => RequestListener = handle
     res.end(result ? JSON.stringify(result) : undefined)
   } catch (err) {
     console.error(err)
+    if (decodePayload) {
+      if (typeof data === 'object' && data !== null && typeof data.payload === 'string') {
+        try {
+          data.payload = JSON.parse(decodeURIComponent(data.payload))
+        } catch (err) {}
+      }
+    }
     if (logRequestOnError) {
+      Sentry.withScope(scope => {
+        scope.setExtra('path', req.url)
+        scope.setExtra('data', data)
+        Sentry.captureException(err)
+      })
       log({
         time: new Date().toLocaleString('US'),
         path: req.url,
