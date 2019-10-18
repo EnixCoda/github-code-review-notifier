@@ -30,7 +30,7 @@ const getWorkspace = (req: IncomingMessage) => {
 const menuForLinkingOthers = (githubName: string) => ({
   attachments: [
     {
-      text: `If the user of ${githubName} is in this workspace, you can set up link for the user.`,
+      text: `If ${githubName} is in this workspace, you can link on behalf of his/her with the button below.`,
       fallback: 'Something went wrong.',
       callback_id: 'link_for_others',
       color: '#3AA3E3',
@@ -104,13 +104,13 @@ export const handleGitHubHook: RouteHandler = async (req, data) => {
 
         const formattedPRLink = slackLink(
           pullRequestURL,
-          `#${number} ${pullRequestTitle.replace(/\+/g, ' ')} in ${repoName}`,
+          `#${number} ${pullRequestTitle.replace(/\+/g, ' ')}`,
         )
         const mainContent = `🧐 ${requesterGitHubName}(${mention(
           requesterUserID,
         )}) requested code review from ${reviewerGitHubName}(${mention(
           reviewerUserID,
-        )}):\n${formattedPRLink}`
+        )}):\n${formattedPRLink} in ${repoName}`
 
         const text = notLinkedGitHubNames.length
           ? `${mainContent}\n\nNote: ${notLinkedGitHubNames.join(

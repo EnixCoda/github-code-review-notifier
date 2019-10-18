@@ -313,10 +313,10 @@ function openLinkForOtherDialog(
 ) {
   const elements = [
     {
-      label: `User of ${githubName}`,
+      label: `Who is ${githubName}?`,
       name: 'slackUser',
       type: 'select',
-      hint: `Which Slack user owns ${githubName} on GitHub?`,
+      hint: `The user will receive notifications about related PR in the future.`,
       data_source: 'users',
     },
   ]
