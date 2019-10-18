@@ -2,7 +2,7 @@ import { IncomingMessage } from '../extra'
 import { getURL, RouteHandler } from './'
 import { actions, botSpeak } from './bot'
 import * as db from './db'
-import { mention } from './format'
+import { mention, slackLink } from './format'
 
 const GITHUB_EVENT_HEADER_KEY = 'X-GitHub-Event'
 
@@ -102,7 +102,10 @@ export const handleGitHubHook: RouteHandler = async (req, data) => {
           return
         }
 
-        const formattedPRLink = `<${pullRequestURL}|${repoName}/${pullRequestTitle}#${number}>` // RepoName/RepoTitle
+        const formattedPRLink = slackLink(
+          pullRequestURL,
+          `${repoName}/${pullRequestTitle}#${number}`,
+        )
         const mainContent = `🧐 ${requesterGitHubName}(${mention(
           requesterUserID,
         )}) requested code review from ${reviewerGitHubName}(${mention(

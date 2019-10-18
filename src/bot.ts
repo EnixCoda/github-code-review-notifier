@@ -4,7 +4,7 @@ import { paths } from '../api/paths'
 import { getURL, RouteHandler } from './'
 import { clientID, clientSecret, verificationToken } from './config'
 import * as db from './db'
-import { githubUserPageLink, mention } from './format'
+import { githubUserPageLink, mention, slackLink } from './format'
 
 function generateWebhookURL(host: string, workspace: string) {
   return `https://${host}${paths.GitHub}?workspace=${workspace}`
@@ -140,7 +140,10 @@ export const handleInteractiveComponents: RouteHandler = async function handleIn
             await botSpeak(
               workspace,
               channelID,
-              `📝 If you have any question, feature request or bug report, please <https://github.com/EnixCoda/github-code-review-notifier/issues/new|draft an issue>.`,
+              `📝 If you have any question, feature request or bug report, please ${slackLink(
+                'https://github.com/EnixCoda/github-code-review-notifier/issues/new',
+                'draft an issue',
+              )}.`,
             )
             return
           }
@@ -150,7 +153,10 @@ export const handleInteractiveComponents: RouteHandler = async function handleIn
             await botSpeak(
               workspace,
               channelID,
-              `🔧 Please setup your GitHub projects with this webhook:\n${webhook}\n\nNeed help? Read the <https://enixcoda.github.io/github-code-review-notifier/#connect-github-projects|connect GitHub projects> section.`,
+              `🔧 Please setup your GitHub projects with this webhook:\n${webhook}\n\nNeed help? Read the ${slackLink(
+                'https://enixcoda.github.io/github-code-review-notifier/#connect-github-projects',
+                'connect GitHub projects',
+              )} section.`,
             )
             return
           }
