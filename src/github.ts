@@ -59,14 +59,26 @@ export const handleGitHubHook: RouteHandler = async (req, data) => {
       return `I'm ready!`
     case GITHUB_EVENT_TYPES.PULL_REQUEST:
       if (data['action'] === GITHUB_EVENT_ACTION_TYPES.REVIEW_REQUESTED) {
-        const { full_name: repoName } = data['repository']
+        // Sometimes there is no requested reviewer data provided
+        if (!data['requested_reviewer']) {
+          console.log(`No reviewer requested`)
+          return
+        }
         const { login: reviewerGitHubName } = data['requested_reviewer']
+        let { full_name: repoName } = data['repository'] || {} // In case no repository data were available
         const {
           user: { login: requesterGitHubName },
           html_url: pullRequestURL,
           title: pullRequestTitle,
           number,
         } = data['pull_request']
+        if (!repoName) {
+          const pullRequestURLRegexp = /^https:\/\/github.com\/(.*?\/.*?)\/pull\/(\d+)$/
+          const matched = (<string>pullRequestURL).match(pullRequestURLRegexp)
+          if (matched) {
+            repoName = matched[1]
+          }
+        }
 
         const [requesterUserID, reviewerUserID] = await Promise.all([
           githubNameToSlackID(workspace, requesterGitHubName),
@@ -157,6 +169,7 @@ export const handleGitHubHook: RouteHandler = async (req, data) => {
             console.log(
               `Could not find user for neither ${requesterGitHubName} nor ${reviewerGitHubName}`,
             )
+            return
           }
           if (state === 'approved') {
             // approvement message, notify requestor
