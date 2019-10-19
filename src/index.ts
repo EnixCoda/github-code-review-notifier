@@ -1,17 +1,11 @@
 import * as Sentry from '@sentry/node'
 import { URL } from 'url'
 import { IncomingMessage, RequestListener } from '../extra'
-import {
-  decodePayload,
-  IN_PRODUCTION_MODE,
-  logRequestOnError,
-  sentryProjectId,
-  sentryPublicKey,
-} from './config'
+import { decodePayload, IN_PRODUCTION_MODE, logRequestOnError, sentryDSN } from './config'
 import { log } from './db'
 
 Sentry.init({
-  dsn: `https://${sentryPublicKey}@sentry.io/${sentryProjectId}`,
+  dsn: sentryDSN,
   environment: IN_PRODUCTION_MODE ? 'production' : 'development',
 })
 

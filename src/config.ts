@@ -27,5 +27,6 @@ export const decodePayload = true
 
 export const sentryPublicKey = SENTRY_PUBLIC_KEY
 export const sentryProjectId = SENTRY_PROJECT_ID
+export const sentryDSN = `https://${sentryPublicKey}@sentry.io/${sentryProjectId}`
 
 export const IN_PRODUCTION_MODE = process.env.NODE_ENV === 'production'
