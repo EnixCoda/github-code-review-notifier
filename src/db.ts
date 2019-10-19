@@ -36,10 +36,9 @@ export function remove(ref: RefSeed) {
   return getRef(ref).remove()
 }
 
-export function load<T>(ref: RefSeed) {
-  return getRef(ref)
-    .once('value')
-    .then(snapshot => snapshot.val() as T | null)
+export async function load<T>(ref: RefSeed) {
+  const snapshot = await getRef(ref).once('value')
+  return snapshot.val() as T | null
 }
 
 export function saveLink(workspace: string, { github, slack }: GSLink) {
@@ -81,36 +80,39 @@ export function removeLink(workspace: string, { github }: Pick<GSLink, 'github'>
     })
 }
 
-export function loadLinks(workspace: string, { github, slack }: Partial<GSLink>) {
-  let ref
-  if (github) {
-    ref = getGitHubLinkQuery(workspace, { github })
-  } else if (slack) {
-    ref = getSlackLinkQuery(workspace, { slack })
+export async function loadLinks(
+  workspace: string,
+  link: Pick<GSLink, 'github'> | Pick<GSLink, 'slack'>,
+) {
+  let query: firebase.database.Query
+
+  if ('github' in link) {
+    query = getGitHubLinkQuery(workspace, { github: link.github })
+  } else if ('slack' in link) {
+    query = getSlackLinkQuery(workspace, { slack: link.slack })
   } else {
-    throw new Error('')
+    throw new Error('Neither github nor slack was provided!')
   }
-  return ref.once('value').then(snapshot =>
-    snapshot.exists()
-      ? Object.values(snapshot.val() as {
-          [key: string]: GSLink
-        })
-      : null,
-  )
+  const snapshot = await query.once('value')
+  return snapshot.exists()
+    ? Object.values(snapshot.val() as {
+        [key: string]: GSLink
+      })
+    : null
 }
 
-export function loadWorkspace(workspace: string) {
-  return load<WorkspaceMeta>(paths.registered(workspace)).then(val => {
-    if (!val) throw new Error(`cannot find workspace "${workspace}"`)
-    return val
-  })
+export async function loadWorkspace(workspace: string) {
+  const val = await load<WorkspaceMeta>(paths.registered(workspace))
+  if (!val) throw new Error(`Cannot find workspace "${workspace}"`)
+  return val
 }
 
-export function createWorkspace(
+export async function createWorkspace(
   workspace: string,
   { botID, botToken, accessToken }: WorkspaceMeta,
 ) {
-  return save(paths.registered(workspace), { botID, botToken, accessToken }).then(() => true)
+  await save(paths.registered(workspace), { botID, botToken, accessToken })
+  return true
 }
 
 export async function log(content: { [key: string]: string | undefined }) {
