@@ -12,12 +12,22 @@ type WorkspaceMeta = {
   botID: string
 }
 
+type Log = {
+  time?: string
+  path?: string
+  info?: string
+  data?: ExpectedAny
+}
+
 type Schema = {
   registered: {
     [workspace: string]: WorkspaceMeta
   }
   link: {
     [workspace: string]: GSLink[]
+  }
+  log: {
+    [workspace: string]: Log[]
   }
 }
 

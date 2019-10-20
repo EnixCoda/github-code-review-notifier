@@ -2,16 +2,47 @@ import firebase from 'firebase'
 import { firebaseConfig } from './config'
 import { dePromiseLike } from './utils'
 
-firebase.initializeApp(firebaseConfig)
+// initialize and basic operations
+
+const app = firebase.initializeApp(firebaseConfig)
+const database = app.database()
+
+type RefPath = string
+
+function getRef(path: RefPath) {
+  return database.ref(path)
+}
+
+function add<T>(path: RefPath, value: T) {
+  return dePromiseLike(getRef(path).push(value))
+}
+
+function set<T>(path: RefPath, value: T) {
+  return getRef(path).set(value)
+}
+
+function remove(path: RefPath) {
+  return getRef(path).remove()
+}
+
+async function get<T>(path: RefPath) {
+  const snapshot = await getRef(path).once('value')
+  return snapshot.val() as T | null
+}
+
+function find(path: RefPath, key: string, value: string | number | boolean | null) {
+  return getRef(path)
+    .orderByChild(key)
+    .equalTo(value)
+}
+
+// database model helpers
 
 const keys = {
   registered: `registered`,
   link: `link`,
   slackUserID: `slack`,
   githubName: `github`,
-  accessToken: `accessToken`,
-  botToken: `botToken`,
-  botID: `botID`,
   log: `logs`,
 }
 
@@ -22,101 +53,68 @@ const paths: {
   link: workspace => `${keys.link}/${workspace}`,
 }
 
-type RefSeed = string
+// business logics
 
-function getRef(ref: RefSeed) {
-  return firebase.database().ref(ref)
+export function saveLink(workspace: string, link: GSLink) {
+  return add(paths.link(workspace), link)
 }
 
-export function save<T>(ref: RefSeed, value: T) {
-  return getRef(ref).set(value)
+function getGitHubLinkQuery(workspace: string, github: GSLink['github']) {
+  return find(paths.link(workspace), keys.githubName, github)
 }
 
-export function remove(ref: RefSeed) {
-  return getRef(ref).remove()
+function getSlackLinkQuery(workspace: string, slack: GSLink['slack']) {
+  return find(paths.link(workspace), keys.slackUserID, slack)
 }
 
-export async function load<T>(ref: RefSeed) {
-  const snapshot = await getRef(ref).once('value')
-  return snapshot.val() as T | null
+function getLinkQuery(workspace: string, link: Pick<GSLink, 'github'> | Pick<GSLink, 'slack'>) {
+  let query: firebase.database.Query
+  if ('github' in link) query = getGitHubLinkQuery(workspace, link.github)
+  else if ('slack' in link) query = getSlackLinkQuery(workspace, link.slack)
+  else throw new Error('Unexpected link: ' + JSON.stringify(link))
+  return query
 }
 
-export function saveLink(workspace: string, { github, slack }: GSLink) {
-  return dePromiseLike(
-    getRef(paths.link(workspace))
-      .push({
-        [keys.slackUserID]: slack,
-        [keys.githubName]: github,
-      })
-      .then(() => true),
-  )
-}
+export async function removeLink(
+  workspace: string,
+  link: Pick<GSLink, 'github'> | Pick<GSLink, 'slack'>,
+) {
+  const query: firebase.database.Query = getLinkQuery(workspace, link)
 
-function getGitHubLinkQuery(workspace: string, { github }: Pick<GSLink, 'github'>) {
-  return getRef(paths.link(workspace))
-    .orderByChild(keys.githubName)
-    .equalTo(github)
-}
-
-function getSlackLinkQuery(workspace: string, { slack }: Pick<GSLink, 'slack'>) {
-  return getRef(paths.link(workspace))
-    .orderByChild(keys.slackUserID)
-    .equalTo(slack)
-}
-
-export function removeLink(workspace: string, { github }: Pick<GSLink, 'github'>) {
-  return getGitHubLinkQuery(workspace, { github })
-    .limitToFirst(1)
-    .once('value')
-    .then(snapshot => {
-      if (snapshot.exists()) {
-        const promisesOfRemove: Promise<boolean>[] = []
-        snapshot.forEach(child => {
-          promisesOfRemove.push(child.ref.remove())
-        })
-        return Promise.all(promisesOfRemove).then(() => true)
-      }
-      return true
+  const snapshot = await query.limitToFirst(1).once('value')
+  if (snapshot.exists()) {
+    const promisesOfRemove: Promise<ExpectedAny>[] = []
+    snapshot.forEach(child => {
+      promisesOfRemove.push(child.ref.remove())
     })
+    return Promise.all(promisesOfRemove)
+  }
 }
 
 export async function loadLinks(
   workspace: string,
   link: Pick<GSLink, 'github'> | Pick<GSLink, 'slack'>,
 ) {
-  let query: firebase.database.Query
+  const query: firebase.database.Query = getLinkQuery(workspace, link)
 
-  if ('github' in link) {
-    query = getGitHubLinkQuery(workspace, { github: link.github })
-  } else if ('slack' in link) {
-    query = getSlackLinkQuery(workspace, { slack: link.slack })
-  } else {
-    throw new Error('Neither github nor slack was provided!')
-  }
   const snapshot = await query.once('value')
-  return snapshot.exists()
-    ? Object.values(snapshot.val() as {
-        [key: string]: GSLink
-      })
-    : null
+  if (snapshot.exists()) {
+    return Object.values(snapshot.val() as {
+      [key: string]: GSLink
+    })
+  }
 }
 
 export async function loadWorkspace(workspace: string) {
-  const val = await load<WorkspaceMeta>(paths.registered(workspace))
-  if (!val) throw new Error(`Cannot find workspace "${workspace}"`)
-  return val
+  const value = await get<WorkspaceMeta>(paths.registered(workspace))
+  if (value === null) throw new Error(`Cannot find workspace "${workspace}"`)
+  return value
 }
 
-export async function createWorkspace(
-  workspace: string,
-  { botID, botToken, accessToken }: WorkspaceMeta,
-) {
-  await save(paths.registered(workspace), { botID, botToken, accessToken })
-  return true
+export function createWorkspace(workspace: string, workspaceMeta: WorkspaceMeta) {
+  return set(paths.registered(workspace), workspaceMeta)
 }
 
-export async function log(content: { [key: string]: string | undefined }) {
-  return await getRef(keys.log)
-    .push(content)
-    .then(() => true)
+export function log(content: { [key: string]: string | undefined }) {
+  return getRef(keys.log).push(content)
 }

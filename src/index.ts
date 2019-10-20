@@ -98,7 +98,7 @@ export const requestHandler: (handler: RouteHandler) => RequestListener = handle
       log({
         time: new Date().toLocaleString('US'),
         path: req.url,
-        info: err,
+        info: String(err),
         data,
       })
     } else {

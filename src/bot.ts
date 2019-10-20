@@ -211,24 +211,30 @@ export const handleInteractiveComponents: RouteHandler = async function handleIn
           case actions.linkOtherUser:
           case actions.link: {
             // TODO: prevent duplication
-            const succeeded = await db.saveLink(workspace, {
-              github: githubName,
-              slack: targetSlackUserID,
-            })
-            if (succeeded)
+            try {
+              await db.saveLink(workspace, {
+                github: githubName,
+                slack: targetSlackUserID,
+              })
               responseMessage = `🤝 Linked ${mention(targetSlackUserID)} to ${githubUserPageLink(
                 githubName,
               )}!`
-            else responseMessage = `Oops, link failed. You may try again later.`
+            } catch (err) {
+              console.error(err)
+              responseMessage = `Oops, link failed. You may try again later.`
+            }
             break
           }
           case actions.unlink: {
-            const succeeded = await db.removeLink(workspace, { github: githubName })
-            if (succeeded)
+            try {
+              await db.removeLink(workspace, { github: githubName })
               responseMessage = `👋 Unlinked ${mention(
                 targetSlackUserID,
               )} from ${githubUserPageLink(githubName)}!`
-            else responseMessage = `Sorry, unlink failed.`
+            } catch (err) {
+              console.error(err)
+              responseMessage = `Sorry, unlink failed.`
+            }
             break
           }
           default:
