@@ -17,9 +17,8 @@
     "@sentry/node": "^5.7.1",
     "@types/http-proxy": "^1.17.0",
     "@types/uuid": "^3.4.5",
-    "firebase": "^5.0.4",
+    "firebase": "^5.11.1",
     "http-proxy": "^1.17.0",
-    "now-env": "^3.0.4",
     "slack": "^11.0.2",
     "typescript": "^3.6.4",
     "uuid": "^3.3.2"
