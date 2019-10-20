@@ -2,7 +2,7 @@ import { IncomingMessage } from '../extra'
 import { getURL, RouteHandler } from './'
 import { actions, botSpeak } from './bot'
 import * as db from './db'
-import { mention, slackLink } from './format'
+import { githubUserPageLink, mention, slackLink } from './format'
 
 const GITHUB_EVENT_HEADER_KEY = 'X-GitHub-Event'
 
@@ -30,7 +30,7 @@ const getWorkspace = (req: IncomingMessage) => {
 const menuForLinkingOthers = (githubName: string) => ({
   attachments: [
     {
-      text: `If ${githubName} is in this workspace, you can link on behalf of his/her with the button below.`,
+      text: `If ${githubName} is in this workspace, you can...`,
       fallback: 'Something went wrong.',
       callback_id: 'link_for_others',
       color: '#3AA3E3',
@@ -116,18 +116,18 @@ export const handleGitHubHook: RouteHandler = async (req, data) => {
 
         const formattedPRLink = slackLink(
           pullRequestURL,
-          `#${number} ${pullRequestTitle.replace(/\+/g, ' ')}`,
+          `*#${number} ${pullRequestTitle.replace(/\+/g, ' ')}* in ${repoName}`,
         )
         const mainContent = `🧐 ${requesterGitHubName}(${mention(
           requesterUserID,
         )}) requested code review from ${reviewerGitHubName}(${mention(
           reviewerUserID,
-        )}):\n${formattedPRLink} in ${repoName}`
+        )}):\n${formattedPRLink}`
 
         const text = notLinkedGitHubNames.length
-          ? `${mainContent}\n\nNote: ${notLinkedGitHubNames.join(
-              ', ',
-            )} has not been linked to this workspace yet.`
+          ? `${mainContent}\n\nNote: ${notLinkedGitHubNames
+              .map(githubUserPageLink)
+              .join(', ')} has not been linked to this workspace yet.`
           : mainContent
 
         return Promise.all(
