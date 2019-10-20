@@ -2,7 +2,8 @@ import firebase from 'firebase'
 import { firebaseConfig } from './config'
 import { dePromiseLike } from './utils'
 
-firebase.initializeApp(firebaseConfig)
+const app = firebase.initializeApp(firebaseConfig)
+const database = app.database()
 
 const keys = {
   registered: `registered`,
@@ -22,22 +23,22 @@ const paths: {
   link: workspace => `${keys.link}/${workspace}`,
 }
 
-type RefSeed = string
+type RefPath = string
 
-function getRef(ref: RefSeed) {
-  return firebase.database().ref(ref)
+function getRef(path: RefPath) {
+  return database.ref(path)
 }
 
-export function save<T>(ref: RefSeed, value: T) {
-  return getRef(ref).set(value)
+export function save<T>(path: RefPath, value: T) {
+  return getRef(path).set(value)
 }
 
-export function remove(ref: RefSeed) {
-  return getRef(ref).remove()
+export function remove(path: RefPath) {
+  return getRef(path).remove()
 }
 
-export async function load<T>(ref: RefSeed) {
-  const snapshot = await getRef(ref).once('value')
+export async function load<T>(path: RefPath) {
+  const snapshot = await getRef(path).once('value')
   return snapshot.val() as T | null
 }
 
