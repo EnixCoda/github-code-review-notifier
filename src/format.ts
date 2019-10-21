@@ -6,3 +6,11 @@ export const githubUserPage = (githubName: string) => `https://github.com/${gith
 
 export const githubUserPageLink = (githubName: string) =>
   slackLink(githubUserPage(githubName), githubName)
+
+export function pullRequestLabel(
+  number: number,
+  pullRequestTitle: string,
+  repoName: string,
+): string {
+  return `*#${number} ${pullRequestTitle.replace(/\+/g, ' ')}* in ${repoName}`
+}

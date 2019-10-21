@@ -2,7 +2,7 @@ import { IncomingMessage } from '../extra'
 import { getURL, RouteHandler } from './'
 import { actions, botSpeak } from './bot'
 import * as db from './db'
-import { githubUserPageLink, mention, slackLink } from './format'
+import { githubUserPageLink, mention, pullRequestLabel, slackLink } from './format'
 
 const GITHUB_EVENT_HEADER_KEY = 'X-GitHub-Event'
 
@@ -65,20 +65,20 @@ export const handleGitHubHook: RouteHandler = async (req, data) => {
           return
         }
         const { login: reviewerGitHubName } = data['requested_reviewer']
-        let { full_name: repoName } = data['repository'] || {} // In case no repository data were available
         const {
           user: { login: requesterGitHubName },
           html_url: pullRequestURL,
           title: pullRequestTitle,
           number,
         } = data['pull_request']
-        if (!repoName) {
-          const pullRequestURLRegexp = /^https:\/\/github.com\/(.*?\/.*?)\/pull\/(\d+)$/
-          const matched = (<string>pullRequestURL).match(pullRequestURLRegexp)
-          if (matched) {
-            repoName = matched[1]
-          }
-        }
+
+        const repoName =
+          (
+            data['repository'] ||
+            {
+              /* In case no repository data were available */
+            }
+          ).full_name || extractRepoNameFromURL(pullRequestURL)
 
         const [requesterUserID, reviewerUserID] = await Promise.all([
           githubNameToSlackID(workspace, requesterGitHubName),
@@ -116,7 +116,7 @@ export const handleGitHubHook: RouteHandler = async (req, data) => {
 
         const formattedPRLink = slackLink(
           pullRequestURL,
-          `*#${number} ${pullRequestTitle.replace(/\+/g, ' ')}* in ${repoName}`,
+          pullRequestLabel(number, pullRequestTitle, repoName),
         )
         const mainContent = `🧐 ${requesterGitHubName}(${mention(
           requesterUserID,
@@ -150,6 +150,9 @@ export const handleGitHubHook: RouteHandler = async (req, data) => {
           const {
             pull_request: {
               user: { login: requesterGitHubName },
+              html_url: pullRequestURL,
+              title: pullRequestTitle,
+              number,
             },
             review: {
               state,
@@ -157,10 +160,25 @@ export const handleGitHubHook: RouteHandler = async (req, data) => {
               user: { login: reviewerGitHubName },
             },
           } = data
+
           if (reviewerGitHubName === requesterGitHubName) {
             // self comment, ignore
             return
           }
+
+          const repoName =
+            (
+              data['repository'] ||
+              {
+                /* In case no repository data were available */
+              }
+            ).full_name || extractRepoNameFromURL(pullRequestURL)
+
+          const formattedPRLink = slackLink(
+            reviewUrl,
+            pullRequestLabel(number, pullRequestTitle, repoName),
+          )
+
           const [requesterUserID, reviewerUserID] = await Promise.all([
             githubNameToSlackID(workspace, requesterGitHubName),
             githubNameToSlackID(workspace, reviewerGitHubName),
@@ -177,7 +195,7 @@ export const handleGitHubHook: RouteHandler = async (req, data) => {
               return botSpeak(
                 workspace,
                 requesterUserID,
-                `🎉 Your pull request has been approved!\n${reviewUrl}`,
+                `🎉 Your pull request has been approved!\n${formattedPRLink}`,
               )
             } else if (reviewerUserID) {
               // we could ask reviewer to introduce this app to PR requester here, but not now
@@ -191,7 +209,7 @@ export const handleGitHubHook: RouteHandler = async (req, data) => {
                 requesterUserID,
               )})'s pull request has been reviewed by ${reviewerGitHubName}(${mention(
                 reviewerUserID,
-              )})\n${reviewUrl}`
+              )})\n${formattedPRLink}`
               if (!reviewerUserID) {
                 const linkNotify = (githubName: string) =>
                   `\n\nNote: ${githubName} has not been linked to this workspace yet.`
@@ -211,6 +229,15 @@ export const handleGitHubHook: RouteHandler = async (req, data) => {
       return `no handler for this event type`
   }
 }
+
+function extractRepoNameFromURL(pullRequestURL: string) {
+  const pullRequestURLRegexp = /^https:\/\/github.com\/(.*?\/.*?)\/pull\/(\d+)$/
+  const matched = (<string>pullRequestURL).match(pullRequestURLRegexp)
+  if (matched) {
+    return matched[1]
+  }
+}
+
 function githubNameToSlackID(workspace: string, githubName: string): Promise<string | null> {
   return db
     .loadLinks(workspace, { github: githubName })
