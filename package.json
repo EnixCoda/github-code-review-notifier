@@ -25,5 +25,11 @@
   },
   "devDependencies": {
     "@sentry/cli": "^1.48.0"
+  },
+  "prettier": {
+    "printWidth": 80,
+    "semi": false,
+    "singleQuote": true,
+    "trailingComma": "all"
   }
 }

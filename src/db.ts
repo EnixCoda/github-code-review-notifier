@@ -99,9 +99,11 @@ export async function loadLinks(
 
   const snapshot = await query.once('value')
   if (snapshot.exists()) {
-    return Object.values(snapshot.val() as {
-      [key: string]: GSLink
-    })
+    return Object.values(
+      snapshot.val() as {
+        [key: string]: GSLink
+      },
+    )
   }
 }
 
