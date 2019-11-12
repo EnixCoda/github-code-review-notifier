@@ -19,5 +19,5 @@
     { "src": "/github-code-review-notifier/(.*)", "dest": "/api/github-code-review-notifier.ts" },
     { "src": "/", "dest": "/api/index.ts" }
   ],
-  "alias": "https://github-code-review-notifier.now.sh"
+  "alias": "github-code-review-notifier.now.sh"
 }
