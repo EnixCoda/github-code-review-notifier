@@ -90,16 +90,17 @@ export const requestHandler: (handler: RouteHandler) => RequestListener = handle
       }
     }
     if (logRequestOnError) {
-      Sentry.withScope(scope => {
-        scope.setExtra('path', req.url)
-        scope.setExtra('data', data)
-        Sentry.captureException(err)
-      })
-      log({
+      const logRef = await log({
         time: new Date().toLocaleString('US'),
         path: req.url,
         info: String(err),
         data,
+      })
+      Sentry.withScope(scope => {
+        scope.setExtra('path', req.url)
+        scope.setExtra('data', data)
+        scope.setExtra('firebase-log-key', logRef.key)
+        Sentry.captureException(err)
       })
     } else {
       console.log('not logging above error to db')
