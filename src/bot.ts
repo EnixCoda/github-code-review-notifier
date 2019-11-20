@@ -37,7 +37,13 @@ export async function botSpeak(
   const { botToken } = await db.loadWorkspace(workspace)
   return Slack.chat
     .postMessage(Object.assign({ as_user: true, token: botToken, channel, text }, extra))
-    .then(({ ok }) => ok)
+    .then(
+      ({ ok }) => ok,
+      err => {
+        if (err === 'account_inactive' || err.message === 'account_inactive') return false
+        throw err
+      },
+    )
 }
 
 const mainMenuActions = [
