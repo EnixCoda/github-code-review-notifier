@@ -234,6 +234,25 @@ async function handleSubmittedPullRequestReview(workspace: string, data: any) {
     } else {
       throw new Error('impossible')
     }
+  } else if (state === 'changes_requested') {
+    // review message
+    if (requesterUserID) {
+      let text = `📝 ${reviewerGitHubName}(${mention(
+        reviewerUserID,
+      )}) has requested changes in ${requesterGitHubName}(${mention(
+        requesterUserID,
+      )})'s pull request\n${formattedPRLink}`
+      if (!reviewerUserID) {
+        const linkNotify = (githubName: string) =>
+          `\n\nNote: ${githubName} has not been linked to this workspace yet.`
+        text += linkNotify(reviewerGitHubName)
+      }
+      return botSpeak(workspace, requesterUserID, text)
+    } else if (reviewerUserID) {
+      // we could ask reviewer to introduce this app to PR requester here, but not now
+    } else {
+      throw new Error('impossible')
+    }
   } else {
     // review message
     if (requesterUserID) {
