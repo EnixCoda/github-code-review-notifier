@@ -14,7 +14,9 @@ When requested to review pull request on GitHub or when your pull request has be
 
    <a href="https://slack.com/oauth/authorize?client_id=358699124487.462026355174&scope=chat:write:bot,bot" target="_blank"><img alt="Add to Slack" height="40" width="139" src="https://platform.slack-edge.com/img/add_to_slack.png" srcset="https://platform.slack-edge.com/img/add_to_slack.png 1x, https://platform.slack-edge.com/img/add_to_slack@2x.png 2x" /></a>
 
-2. Then you could find `@GitHub Code Review Notifier` in your workspace. Say `hi` to it to get **the menu**.
+2. Then you could find `@GitHub Code Review Notifier` in your workspace.
+
+3. Say anything (e.g. `hi`) to it to get **menu**.
 
 ### Connect GitHub account
 
