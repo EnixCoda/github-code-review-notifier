@@ -1,13 +1,8 @@
 import { getURL, RouteHandler } from './'
 import { actions, botSpeak } from './bot'
 import * as db from './db'
-import {
-  githubUserPageLink,
-  mention,
-  pullRequestLabel,
-  slackLink,
-} from './format'
 import { IncomingMessage } from './extra'
+import { githubUserPageLink, mention, pullRequestLabel, slackLink } from './format'
 
 const GITHUB_EVENT_HEADER_KEY = 'X-GitHub-Event'
 
@@ -135,12 +130,7 @@ async function handleReviewRequested(workspace: string, data: any) {
   })
 
   if (linkedUsers.length === 0) {
-    console.log(
-      `could not find users for`,
-      requesterGitHubName,
-      `nor`,
-      reviewerGitHubName,
-    )
+    console.log(`could not find users for`, requesterGitHubName, `nor`, reviewerGitHubName)
     return
   }
 
@@ -166,12 +156,7 @@ async function handleReviewRequested(workspace: string, data: any) {
         return botSpeak(workspace, slackUserID, text)
       } else if (notLinkedGitHubNames.length === 1) {
         const [githubName] = notLinkedGitHubNames
-        return botSpeak(
-          workspace,
-          slackUserID,
-          text,
-          menuForLinkingOthers(githubName),
-        )
+        return botSpeak(workspace, slackUserID, text, menuForLinkingOthers(githubName))
       }
       throw new Error('Cannot handle multiple not linked users yet.')
     }),
@@ -206,19 +191,14 @@ async function handleSubmittedPullRequestReview(workspace: string, data: any) {
       }
     ).full_name || extractRepoNameFromURL(pullRequestURL)
 
-  const formattedPRLink = slackLink(
-    reviewUrl,
-    pullRequestLabel(number, pullRequestTitle, repoName),
-  )
+  const formattedPRLink = slackLink(reviewUrl, pullRequestLabel(number, pullRequestTitle, repoName))
 
   const [requesterUserID, reviewerUserID] = await Promise.all([
     githubNameToSlackID(workspace, requesterGitHubName),
     githubNameToSlackID(workspace, reviewerGitHubName),
   ])
   if (!requesterUserID && !reviewerUserID) {
-    console.log(
-      `Could not find user for neither ${requesterGitHubName} nor ${reviewerGitHubName}`,
-    )
+    console.log(`Could not find user for neither ${requesterGitHubName} nor ${reviewerGitHubName}`)
     return
   }
   if (state === 'approved') {
@@ -283,10 +263,7 @@ function extractRepoNameFromURL(pullRequestURL: string) {
   }
 }
 
-function githubNameToSlackID(
-  workspace: string,
-  githubName: string,
-): Promise<string | null> {
+function githubNameToSlackID(workspace: string, githubName: string): Promise<string | null> {
   return db
     .loadLinks(workspace, { github: githubName })
     .then(links => (links ? links[0].slack : null))
