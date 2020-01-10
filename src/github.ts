@@ -1,4 +1,3 @@
-import { IncomingMessage } from '../extra'
 import { getURL, RouteHandler } from './'
 import { actions, botSpeak } from './bot'
 import * as db from './db'
@@ -8,6 +7,7 @@ import {
   pullRequestLabel,
   slackLink,
 } from './format'
+import { IncomingMessage } from './extra'
 
 const GITHUB_EVENT_HEADER_KEY = 'X-GitHub-Event'
 
