@@ -4,6 +4,7 @@ import { paths } from '../api/paths'
 import { getURL, RouteHandler } from './'
 import { clientID, clientSecret, verificationToken } from './config'
 import * as db from './db'
+import { dedent } from './dedent'
 import { githubUserPageLink, mention, slackLink } from './format'
 
 function generateWebhookURL(host: string, workspace: string) {
@@ -48,7 +49,7 @@ export async function botSpeak(
 
 const mainMenuActions = [
   {
-    text: 'Link you to GitHub',
+    text: 'Link to GitHub',
     type: 'button',
     name: actions.link,
     value: JSON.stringify(null),
@@ -66,7 +67,7 @@ const mainMenuActions = [
     value: JSON.stringify(null),
   },
   {
-    text: 'Feedback',
+    text: 'Feedback/Need help',
     type: 'button',
     name: actions.feedback,
     value: JSON.stringify(null),
@@ -147,7 +148,7 @@ export const handleInteractiveComponents: RouteHandler = async function handleIn
               await botSpeak(
                 workspace,
                 channelID,
-                `📝 If you have any question, feature request or bug report, please ${slackLink(
+                dedent`📝 If you have any question, feature request or bug report, please ${slackLink(
                   'https://github.com/EnixCoda/github-code-review-notifier/issues/new',
                   'draft an issue',
                 )} or email the author enixcoda@gmail.com.`,
@@ -160,7 +161,10 @@ export const handleInteractiveComponents: RouteHandler = async function handleIn
               await botSpeak(
                 workspace,
                 channelID,
-                `🔧 Please setup your GitHub projects with this webhook:\n${webhook}\n\nNeed help? Read the ${slackLink(
+                dedent`🔧 Please setup your GitHub projects with this webhook:
+                ${webhook}
+
+                Need help? Read the ${slackLink(
                   'https://enixcoda.github.io/github-code-review-notifier/#connect-github-projects',
                   'connect GitHub projects',
                 )} section.`,

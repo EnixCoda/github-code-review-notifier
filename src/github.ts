@@ -1,6 +1,7 @@
 import { getURL, RouteHandler } from './'
 import { actions, botSpeak } from './bot'
 import * as db from './db'
+import { dedent } from './dedent'
 import { IncomingMessage } from './extra'
 import { githubUserPageLink, mention, pullRequestLabel, slackLink } from './format'
 
@@ -138,16 +139,18 @@ async function handleReviewRequested(workspace: string, data: any) {
     pullRequestURL,
     pullRequestLabel(number, pullRequestTitle, repoName),
   )
-  const mainContent = `🧐 ${requesterGitHubName}(${mention(
+  const mainContent = dedent`
+  🧐 ${requesterGitHubName}(${mention(
     requesterUserID,
-  )}) requested code review from ${reviewerGitHubName}(${mention(
-    reviewerUserID,
-  )}):\n${formattedPRLink}`
+  )}) requested code review from ${reviewerGitHubName}(${mention(reviewerUserID)}):
+  ${formattedPRLink}`
 
   const text = notLinkedGitHubNames.length
-    ? `${mainContent}\n\nNote: ${notLinkedGitHubNames
-        .map(githubUserPageLink)
-        .join(', ')} has not been linked to this workspace yet.`
+    ? dedent`${mainContent}
+
+    Note: ${notLinkedGitHubNames
+      .map(githubUserPageLink)
+      .join(', ')} has not been linked to this workspace yet.`
     : mainContent
 
   return Promise.all(
@@ -207,7 +210,8 @@ async function handleSubmittedPullRequestReview(workspace: string, data: any) {
       return botSpeak(
         workspace,
         requesterUserID,
-        `🎉 Your pull request has been approved!\n${formattedPRLink}`,
+        dedent`🎉 Your pull request has been approved!
+        ${formattedPRLink}`,
       )
     } else if (reviewerUserID) {
       // we could ask reviewer to introduce this app to PR requester here, but not now
@@ -217,14 +221,18 @@ async function handleSubmittedPullRequestReview(workspace: string, data: any) {
   } else if (state === 'changes_requested') {
     // review message
     if (requesterUserID) {
-      let text = `📝 ${reviewerGitHubName}(${mention(
+      let text = dedent`📝 ${reviewerGitHubName}(${mention(
         reviewerUserID,
       )}) has requested changes in ${requesterGitHubName}(${mention(
         requesterUserID,
-      )})'s pull request\n${formattedPRLink}`
+      )})'s pull request
+      ${formattedPRLink}`
+
       if (!reviewerUserID) {
         const linkNotify = (githubName: string) =>
-          `\n\nNote: ${githubName} has not been linked to this workspace yet.`
+          dedent`
+
+          Note: ${githubName} has not been linked to this workspace yet.`
         text += linkNotify(reviewerGitHubName)
       }
       return botSpeak(workspace, requesterUserID, text)
@@ -236,14 +244,15 @@ async function handleSubmittedPullRequestReview(workspace: string, data: any) {
   } else {
     // review message
     if (requesterUserID) {
-      let text = `👏 ${requesterGitHubName}(${mention(
+      let text = dedent`👏 ${requesterGitHubName}(${mention(
         requesterUserID,
-      )})'s pull request has been reviewed by ${reviewerGitHubName}(${mention(
-        reviewerUserID,
-      )})\n${formattedPRLink}`
+      )})'s pull request has been reviewed by ${reviewerGitHubName}(${mention(reviewerUserID)})
+      ${formattedPRLink}`
       if (!reviewerUserID) {
         const linkNotify = (githubName: string) =>
-          `\n\nNote: ${githubName} has not been linked to this workspace yet.`
+          `
+
+          Note: ${githubName} has not been linked to this workspace yet.`
         text += linkNotify(reviewerGitHubName)
       }
       return botSpeak(workspace, requesterUserID, text)
