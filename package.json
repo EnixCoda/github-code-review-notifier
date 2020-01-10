@@ -27,7 +27,7 @@
     "@sentry/cli": "^1.48.0"
   },
   "prettier": {
-    "printWidth": 80,
+    "printWidth": 100,
     "semi": false,
     "singleQuote": true,
     "trailingComma": "all"

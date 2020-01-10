@@ -131,128 +131,140 @@ export const handleInteractiveComponents: RouteHandler = async function handleIn
       channel: { id: channelID },
       type: interactiveMessageType,
     } = payload
-    switch (interactiveMessageType) {
-      case interactiveMessageTypes.interactiveMessage: {
-        // Slack doc says there would be only one action:
-        // https://api.slack.com/docs/interactive-message-field-guide "Action URL invocation payload"
-        const {
-          actions: [{ name: action, value }],
-        } = payload
+    try {
+      switch (interactiveMessageType) {
+        case interactiveMessageTypes.interactiveMessage: {
+          // Slack doc says there would be only one action:
+          // https://api.slack.com/docs/interactive-message-field-guide "Action URL invocation payload"
+          const {
+            actions: [{ name: action, value }],
+          } = payload
 
-        const state = createInitialState(action, value)
+          const state = createInitialState(action, value)
 
-        switch (action) {
-          case actions.feedback: {
-            await botSpeak(
-              workspace,
-              channelID,
-              `📝 If you have any question, feature request or bug report, please ${slackLink(
-                'https://github.com/EnixCoda/github-code-review-notifier/issues/new',
-                'draft an issue',
-              )}.`,
-            )
-            return
-          }
-          case actions.getWebhook: {
-            const url = getURL(req)
-            const webhook = generateWebhookURL(url.host, workspace)
-            await botSpeak(
-              workspace,
-              channelID,
-              `🔧 Please setup your GitHub projects with this webhook:\n${webhook}\n\nNeed help? Read the ${slackLink(
-                'https://enixcoda.github.io/github-code-review-notifier/#connect-github-projects',
-                'connect GitHub projects',
-              )} section.`,
-            )
-            return
-          }
-          case actions.link:
-          case actions.unlink: {
-            const links = await db.loadLinks(workspace, { slack: slackUserID })
-            const githubNames = links ? links.map(({ github }) => github) : null
-
-            if (action === actions.unlink) {
-              if (!githubNames) {
-                await botSpeak(
-                  workspace,
-                  channelID,
-                  `👻 Hi ${mention(
-                    slackUserID,
-                  )}, you are not linked to any GitHub users yet. You can get started by clicking "Link to GitHub" on the left.`,
-                )
-              } else {
-                await openUnlinkDialog(workspace, payload, githubNames)
-              }
-            } else {
-              await openLinkDialog(workspace, payload, githubNames || undefined, state)
+          switch (action) {
+            case actions.feedback: {
+              await botSpeak(
+                workspace,
+                channelID,
+                `📝 If you have any question, feature request or bug report, please ${slackLink(
+                  'https://github.com/EnixCoda/github-code-review-notifier/issues/new',
+                  'draft an issue',
+                )} or email the author enixcoda@gmail.com.`,
+              )
+              return
             }
-            return
-          }
-          case actions.linkOtherUser: {
-            const { githubName } = state
-            if (typeof githubName !== 'string') throw new Error('Unexpected state')
-
-            await openLinkForOtherDialog(workspace, payload, githubName, { githubName })
-
-            return
-          }
-          default:
-            break
-        }
-        return
-      }
-      case interactiveMessageTypes.dialogSubmission: {
-        const { submission = {} } = payload
-        const { action, state } = parseState(payload.state)
-
-        const githubName =
-          (state && state.githubName) || submission.githubName || submission.github_name
-        const targetSlackUserID =
-          (state && state.slackUserID) ||
-          (submission.slackUser && submission.slackUser.id) ||
-          slackUserID
-
-        let responseMessage: string
-        switch (action) {
-          case actions.linkOtherUser:
-          case actions.link: {
-            // TODO: prevent duplication
-            try {
-              await db.saveLink(workspace, {
-                github: githubName,
-                slack: targetSlackUserID,
+            case actions.getWebhook: {
+              const url = getURL(req)
+              const webhook = generateWebhookURL(url.host, workspace)
+              await botSpeak(
+                workspace,
+                channelID,
+                `🔧 Please setup your GitHub projects with this webhook:\n${webhook}\n\nNeed help? Read the ${slackLink(
+                  'https://enixcoda.github.io/github-code-review-notifier/#connect-github-projects',
+                  'connect GitHub projects',
+                )} section.`,
+              )
+              return
+            }
+            case actions.link:
+            case actions.unlink: {
+              const links = await db.loadLinks(workspace, {
+                slack: slackUserID,
               })
-              responseMessage = `🤝 Linked ${mention(targetSlackUserID)} to ${githubUserPageLink(
+              const githubNames = links ? links.map(({ github }) => github) : null
+
+              if (action === actions.unlink) {
+                if (!githubNames) {
+                  await botSpeak(
+                    workspace,
+                    channelID,
+                    `👻 Hi ${mention(
+                      slackUserID,
+                    )}, you are not linked to any GitHub users yet. You can get started by clicking "Link to GitHub" on the left.`,
+                  )
+                } else {
+                  await openUnlinkDialog(workspace, payload, githubNames)
+                }
+              } else {
+                await openLinkDialog(workspace, payload, githubNames || undefined, state)
+              }
+              return
+            }
+            case actions.linkOtherUser: {
+              const { githubName } = state
+              if (typeof githubName !== 'string') throw new Error('Unexpected state')
+
+              await openLinkForOtherDialog(workspace, payload, githubName, {
                 githubName,
-              )}!`
-            } catch (err) {
-              console.error(err)
-              responseMessage = `Oops, link failed. You may try again later.`
+              })
+
+              return
             }
-            break
+            default:
+              break
           }
-          case actions.unlink: {
-            try {
-              await db.removeLink(workspace, { github: githubName })
-              responseMessage = `👋 Unlinked ${mention(
-                targetSlackUserID,
-              )} from ${githubUserPageLink(githubName)}!`
-            } catch (err) {
-              console.error(err)
-              responseMessage = `Sorry, unlink failed.`
-            }
-            break
-          }
-          default:
-            throw `unknown command ${action}`
+          return
         }
+        case interactiveMessageTypes.dialogSubmission: {
+          const { submission = {} } = payload
+          const { action, state } = parseState(payload.state)
 
-        await botSpeak(workspace, channelID, responseMessage)
+          const githubName =
+            (state && state.githubName) || submission.githubName || submission.github_name
+          const targetSlackUserID =
+            (state && state.slackUserID) ||
+            (submission.slackUser && submission.slackUser.id) ||
+            slackUserID
 
-        return
+          let responseMessage: string
+          switch (action) {
+            case actions.linkOtherUser:
+            case actions.link: {
+              // TODO: prevent duplication
+              try {
+                await db.saveLink(workspace, {
+                  github: githubName,
+                  slack: targetSlackUserID,
+                })
+                responseMessage = `🤝 Linked ${mention(targetSlackUserID)} to ${githubUserPageLink(
+                  githubName,
+                )}!`
+              } catch (err) {
+                console.error(err)
+                responseMessage = `Oops, link failed. You may try again later.`
+              }
+              break
+            }
+            case actions.unlink: {
+              try {
+                await db.removeLink(workspace, { github: githubName })
+                responseMessage = `👋 Unlinked ${mention(
+                  targetSlackUserID,
+                )} from ${githubUserPageLink(githubName)}!`
+              } catch (err) {
+                console.error(err)
+                responseMessage = `Sorry, unlink failed.`
+              }
+              break
+            }
+            default:
+              throw `unknown command ${action}`
+          }
+
+          await botSpeak(workspace, channelID, responseMessage)
+
+          return
+        }
+        default:
+          console.log(`unknown payload type`, data.payload)
       }
-      default:
-        console.log(`unknown payload type`, data.payload)
+    } catch (err) {
+      console.error(err)
+
+      await botSpeak(workspace, channelID, `Oops, something went wrong :(`)
+
+      throw err
     }
   } else {
     console.log(`no payload detected`)
