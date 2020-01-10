@@ -29,3 +29,7 @@ You can click `Setup GitHub projects` in the menu to get a webhook for connectin
 - [How to use GitHub webhook?](https://developer.github.com/webhooks/creating/)
 - The events sent to it should at least include `Pull requests` and `Pull request reviews`. Or `Send me everything` for easier setup.
 - The URL is bound to the workspace. And multiple projects can share one URL in one Slack workspace.
+
+## Help
+
+Need more help? [Draft an issue](https://github.com/EnixCoda/github-code-review-notifier/issues) or [email me](mailto:enixcoda@gmail.com).
