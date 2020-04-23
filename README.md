@@ -16,7 +16,7 @@ When requested to review pull request on GitHub or when your pull request has be
 
 2. Then you could find `@GitHub Code Review Notifier` in your workspace.
 
-3. Say anything (e.g. `hi`) to it to get **menu**.
+3. DM anything (e.g. `hi`) to it to get **menu**.
 
 ### Connect GitHub account
 
