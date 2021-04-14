@@ -5,6 +5,8 @@
   |---|---|
   |<span>https://<span>github-code-review-notifier.**now.sh**/github?workspace=XXX|<span>https://<span>github-code-review-notifier.**vercel.app**/github?workspace=XXX|
 
+---
+
 When requested to review pull request on GitHub or when your pull request has been approved, you will be notified on Slack immediately! And a direct link to the Pull Request will be provided in the message.
 
 ## A picture is worths a thousand words
