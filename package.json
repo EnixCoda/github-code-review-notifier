@@ -9,9 +9,6 @@
   "main": "build/index.js",
   "author": "EnixCoda",
   "license": "ISC",
-  "engines": {
-    "node": "10.x"
-  },
   "dependencies": {
     "@now/node": "^1.0.0",
     "@sentry/node": "^5.7.1",
