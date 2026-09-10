@@ -1,5 +1,6 @@
 .vscode
 .git
 node_modules
+cloudflare
 
 now-secrets.json

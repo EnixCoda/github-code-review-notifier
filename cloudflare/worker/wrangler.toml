@@ -1,0 +1,34 @@
+name = "github-webhook-filter"
+main = "src/index.js"
+compatibility_date = "2026-09-10"
+
+[vars]
+REQUIRE_HOOKSHOT = "true"
+ORIGIN_URL = "https://test.enix.one"
+
+# ---------------------------------------------------------------------------
+# PRODUCTION (default `wrangler deploy`)
+#   Intercepts the assigned domain and forwards handled events to the same origin.
+#   NOTE: subrequests the Worker makes to its own zone bypass the Worker route,
+#   so forwarding to https://test.enix.one reaches Vercel directly (no loop).
+# ---------------------------------------------------------------------------
+[[routes]]
+pattern = "test.enix.one/github*"
+zone_name = "enix.one"
+
+# ---------------------------------------------------------------------------
+# STAGING (deploy with `wrangler deploy --env staging`)
+#   Targets the Vercel preview deployment created by the `preview` branch.
+#   Set the staging origin before deploying:
+#     npx wrangler secret put ORIGIN_URL --env staging   # -> Vercel preview URL
+#     npx wrangler deploy --env staging
+# ---------------------------------------------------------------------------
+[env.staging]
+name = "github-webhook-filter-staging"
+
+[env.staging.vars]
+REQUIRE_HOOKSHOT = "true"
+
+[[env.staging.routes]]
+pattern = "staging.test.enix.one/github*"
+zone_name = "enix.one"
