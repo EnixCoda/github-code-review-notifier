@@ -5,24 +5,23 @@ workers_dev = true
 
 [vars]
 REQUIRE_HOOKSHOT = "true"
-ORIGIN_URL = "https://test.enix.one"
+ORIGIN_URL = "https://github-code-review-notifier.enix.one"
 
 # ---------------------------------------------------------------------------
 # PRODUCTION (default `wrangler deploy`)
-#   Intercepts the assigned domain and forwards handled events to the same origin.
-#   NOTE: subrequests the Worker makes to its own zone bypass the Worker route,
-#   so forwarding to https://test.enix.one reaches Vercel directly (no loop).
+#   Intercepts the real webhook host (long domain). Only enable AFTER switching
+#   `github-code-review-notifier.enix.one` to proxied in Cloudflare.
+#   Subrequests a Worker makes to its own zone bypass this route (no loop).
 # ---------------------------------------------------------------------------
 [[routes]]
-pattern = "test.enix.one/github*"
+pattern = "github-code-review-notifier.enix.one/github*"
 zone_name = "enix.one"
 
 # ---------------------------------------------------------------------------
-# STAGING (deploy with `wrangler deploy --env staging`)
-#   Targets the Vercel preview deployment created by the `preview` branch.
-#   Set the staging origin before deploying:
-#     npx wrangler secret put ORIGIN_URL --env staging   # -> Vercel preview URL
-#     npx wrangler deploy --env staging
+# PREVIEW / STAGING (`wrangler deploy --env staging`)
+#   Bound to the preview domain, which is already proxied through Cloudflare.
+#   Used to verify filtering + the same-zone forwarding (no-loop) behaviour
+#   before touching prod. Safe: real users' webhooks point at the long domain.
 # ---------------------------------------------------------------------------
 [env.staging]
 name = "github-webhook-filter-staging"
@@ -30,7 +29,8 @@ workers_dev = true
 
 [env.staging.vars]
 REQUIRE_HOOKSHOT = "true"
+ORIGIN_URL = "https://test.enix.one"
 
 [[env.staging.routes]]
-pattern = "staging.test.enix.one/github*"
+pattern = "test.enix.one/github*"
 zone_name = "enix.one"
