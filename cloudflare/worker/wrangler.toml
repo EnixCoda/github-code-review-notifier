@@ -1,6 +1,7 @@
 name = "github-webhook-filter"
 main = "src/index.js"
 compatibility_date = "2026-09-10"
+workers_dev = true
 
 [vars]
 REQUIRE_HOOKSHOT = "true"
@@ -25,6 +26,7 @@ zone_name = "enix.one"
 # ---------------------------------------------------------------------------
 [env.staging]
 name = "github-webhook-filter-staging"
+workers_dev = true
 
 [env.staging.vars]
 REQUIRE_HOOKSHOT = "true"
