@@ -87,7 +87,7 @@ export const requestHandler: (handler: RouteHandler) => RequestListener = handle
   try {
     data = await parseContent(req)
     result = await handler(req, data)
-    await safeMetric('success')
+    safeMetric('success').catch(() => {}) // fire-and-forget; never block the response
     res.end(result ? JSON.stringify(result) : undefined)
   } catch (err) {
     console.error(err)
@@ -107,7 +107,7 @@ export const requestHandler: (handler: RouteHandler) => RequestListener = handle
           info: String(err),
         }),
       )
-      await safeMetric('errors')
+      safeMetric('errors').catch(() => {}) // fire-and-forget; never block the response
       Sentry.withScope(scope => {
         scope.setExtra('path', req.url)
         scope.setExtra('data', data)
