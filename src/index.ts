@@ -91,6 +91,13 @@ export const requestHandler: (handler: RouteHandler) => RequestListener = handle
     res.end(result ? JSON.stringify(result) : undefined)
   } catch (err) {
     console.error(err)
+    const _err = err as { legacyDeadline?: boolean; message?: string }
+    if (_err && _err.legacyDeadline) {
+      // Old vercel.app webhook host retired at deadline — signal GitHub to stop.
+      res.writeHead(410)
+      res.end(_err.message || 'webhook host retired')
+      return
+    }
     if (decodePayload) {
       if (typeof data === 'object' && data !== null && typeof data.payload === 'string') {
         try {

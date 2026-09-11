@@ -22,6 +22,13 @@ const GITHUB_EVENT_ACTION_TYPES = {
   SUBMITTED: 'submitted',
 }
 
+// Retire the old vercel.app webhook host at the end of 2026.
+const LEGACY_HOST_MARKER = '.vercel.app'
+const WEBHOOK_HOST_DEADLINE_UTC = Date.UTC(2026, 11, 31, 23, 59, 59)
+
+const legacyTip = (workspace: string) =>
+  `\n\n💡 To keep the service free, please update your webhook URL to https://github-code-review-notifier.enix.one/github?workspace=${workspace} — this host retires at the end of 2026.`
+
 const getHeader = (req: IncomingMessage, key: string) =>
   req.headers && (req.headers[key] || req.headers[key.toLowerCase()])
 
@@ -61,6 +68,17 @@ export const handleGitHubHook: RouteHandler = async (req, data) => {
   const type = getHeader(req, GITHUB_EVENT_HEADER_KEY)
   if (!type) throw Error(`no github event header provided`)
 
+  const host = String(req.headers.host || '')
+  const legacyHost = host.includes(LEGACY_HOST_MARKER)
+  const pastDeadline = Date.now() > WEBHOOK_HOST_DEADLINE_UTC
+  if (legacyHost && pastDeadline) {
+    const err: any = new Error(
+      `This webhook host is retired. Point it to https://github-code-review-notifier.enix.one/github?workspace=${workspace}`,
+    )
+    err.legacyDeadline = true
+    throw err
+  }
+
   // Usage observability: fire-and-forget, never affects the response.
   try {
     db
@@ -70,6 +88,7 @@ export const handleGitHubHook: RouteHandler = async (req, data) => {
         event: typeof type === 'string' ? type : undefined,
         repo: (data && data.repository && data.repository.full_name) || undefined,
         action: data && data.action ? String(data.action) : undefined,
+        legacy: legacyHost ? 1 : 0,
       })
       .catch(() => {})
   } catch (err) {}
@@ -80,7 +99,7 @@ export const handleGitHubHook: RouteHandler = async (req, data) => {
     case GITHUB_EVENT_TYPES.PULL_REQUEST:
       switch (data['action']) {
         case GITHUB_EVENT_ACTION_TYPES.REVIEW_REQUESTED: {
-          return handleReviewRequested(workspace, data)
+          return handleReviewRequested(workspace, data, legacyHost)
         }
         default:
           return 'unresolved action'
@@ -88,7 +107,7 @@ export const handleGitHubHook: RouteHandler = async (req, data) => {
     case GITHUB_EVENT_TYPES.PULL_REQUEST_REVIEW:
       switch (data.action) {
         case GITHUB_EVENT_ACTION_TYPES.SUBMITTED:
-          return handleSubmittedPullRequestReview(workspace, data)
+          return handleSubmittedPullRequestReview(workspace, data, legacyHost)
         default:
           return 'unresolved action'
       }
@@ -97,7 +116,7 @@ export const handleGitHubHook: RouteHandler = async (req, data) => {
   }
 }
 
-async function handleReviewRequested(workspace: string, data: any) {
+async function handleReviewRequested(workspace: string, data: any, legacyHost: boolean) {
   // Sometimes there is no requested reviewer data provided
   if (!data['requested_reviewer']) {
     console.log(`No reviewer requested`)
@@ -174,16 +193,18 @@ async function handleReviewRequested(workspace: string, data: any) {
         .join(', ')} has not been linked to this workspace yet.`
     : mainContent
 
+  const finalText = legacyHost ? text + legacyTip(workspace) : text
+
   return Promise.all(
     linkedUsers.map(({ slackUserID }) => {
       if (notLinkedGitHubNames.length === 0) {
-        return botSpeak(workspace, slackUserID, text)
+        return botSpeak(workspace, slackUserID, finalText)
       } else if (notLinkedGitHubNames.length === 1) {
         const [githubName] = notLinkedGitHubNames
         return botSpeak(
           workspace,
           slackUserID,
-          text,
+          finalText,
           menuForLinkingOthers(githubName),
         )
       }
@@ -192,7 +213,12 @@ async function handleReviewRequested(workspace: string, data: any) {
   )
 }
 
-async function handleSubmittedPullRequestReview(workspace: string, data: any) {
+async function handleSubmittedPullRequestReview(
+  workspace: string,
+  data: any,
+  legacyHost: boolean,
+) {
+  const tip = legacyHost ? legacyTip(workspace) : ''
   const {
     pull_request: {
       user: { login: requesterGitHubName },
@@ -241,7 +267,7 @@ async function handleSubmittedPullRequestReview(workspace: string, data: any) {
       return botSpeak(
         workspace,
         requesterUserID,
-        `🎉 Your pull request has been approved!\n${formattedPRLink}`,
+        `🎉 Your pull request has been approved!\n${formattedPRLink}${tip}`,
       )
     } else if (reviewerUserID) {
       // we could ask reviewer to introduce this app to PR requester here, but not now
@@ -261,7 +287,7 @@ async function handleSubmittedPullRequestReview(workspace: string, data: any) {
           `\n\nNote: ${githubName} has not been linked to this workspace yet.`
         text += linkNotify(reviewerGitHubName)
       }
-      return botSpeak(workspace, requesterUserID, text)
+      return botSpeak(workspace, requesterUserID, text + tip)
     } else if (reviewerUserID) {
       // we could ask reviewer to introduce this app to PR requester here, but not now
     } else {
@@ -280,7 +306,7 @@ async function handleSubmittedPullRequestReview(workspace: string, data: any) {
           `\n\nNote: ${githubName} has not been linked to this workspace yet.`
         text += linkNotify(reviewerGitHubName)
       }
-      return botSpeak(workspace, requesterUserID, text)
+      return botSpeak(workspace, requesterUserID, text + tip)
     } else if (reviewerUserID) {
       // we could ask reviewer to introduce this app to PR requester here, but not now
     } else {
