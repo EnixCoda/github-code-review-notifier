@@ -2,7 +2,7 @@ import * as Sentry from '@sentry/node'
 import { URL } from 'url'
 import { IncomingMessage, RequestListener } from '../extra'
 import { decodePayload, IN_PRODUCTION_MODE, logRequestOnError, sentryDSN } from './config'
-import { log } from './db'
+import { incrementMetric } from './db'
 
 Sentry.init({
   dsn: sentryDSN,

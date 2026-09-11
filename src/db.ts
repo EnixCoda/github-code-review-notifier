@@ -43,7 +43,7 @@ const keys = {
   link: `link`,
   slackUserID: `slack`,
   githubName: `github`,
-  log: `logs`,
+  metrics: `metrics`,
 }
 
 const paths: {
@@ -117,6 +117,18 @@ export function createWorkspace(workspace: string, workspaceMeta: WorkspaceMeta)
   return set(paths.registered(workspace), workspaceMeta)
 }
 
-export function log(content: { [key: string]: string | undefined }) {
-  return getRef(keys.log).push(content)
+export async function incrementMetric(name: MetricName, amount = 1) {
+  const ref = getRef(`${keys.metrics}/${name}`)
+  await ref.transaction(value => {
+    const current = value && typeof value === 'object' ? (value as Metric).count : 0
+    return {
+      count: current + amount,
+      last_time: Date.now(),
+    }
+  })
+}
+
+// Usage observability: one record per webhook delivery (fire-and-forget).
+export function logUsage(content: { [key: string]: string | number | undefined }) {
+  return getRef('usage').push(content)
 }

@@ -60,6 +60,20 @@ export const handleGitHubHook: RouteHandler = async (req, data) => {
   const workspace = getWorkspace(req)
   const type = getHeader(req, GITHUB_EVENT_HEADER_KEY)
   if (!type) throw Error(`no github event header provided`)
+
+  // Usage observability: fire-and-forget, never affects the response.
+  try {
+    db
+      .logUsage({
+        ts: Date.now(),
+        workspace,
+        event: type,
+        repo: (data && data.repository && data.repository.full_name) || undefined,
+        action: data && data.action ? String(data.action) : undefined,
+      })
+      .catch(() => {})
+  } catch (err) {}
+
   switch (type) {
     case GITHUB_EVENT_TYPES.PING:
       return `I'm ready!`

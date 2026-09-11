@@ -5,3 +5,5 @@ now-secrets.json
 build
 
 .env
+.vercel
+.env*
