@@ -12,11 +12,11 @@ type WorkspaceMeta = {
   botID: string
 }
 
-type Log = {
-  time?: string
-  path?: string
-  info?: string
-  data?: ExpectedAny
+type MetricName = 'success' | 'errors'
+
+type Metric = {
+  count: number
+  last_time: number
 }
 
 type Schema = {
@@ -26,8 +26,8 @@ type Schema = {
   link: {
     [workspace: string]: GSLink[]
   }
-  log: {
-    [workspace: string]: Log[]
+  metrics: {
+    [name: string]: Metric
   }
 }
 

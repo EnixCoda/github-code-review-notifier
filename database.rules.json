@@ -1,0 +1,23 @@
+{
+  "rules": {
+    "registered": {
+      ".read": true,
+      ".write": true
+    },
+    "link": {
+      ".read": true,
+      ".write": true
+    },
+    "metrics": {
+      ".read": true,
+      ".write": true
+    },
+    "usage": {
+      ".read": true,
+      ".write": true
+    },
+    "logs": false,
+    ".read": false,
+    ".write": false
+  }
+}

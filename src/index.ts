@@ -19,6 +19,14 @@ export type RouteHandler<T = ExpectedAny> = (
   data: ExpectedAny,
 ) => Promise<T> | T
 
+async function safeMetric(name: MetricName) {
+  try {
+    await incrementMetric(name)
+  } catch {
+    // Metric writes are best-effort; never let them fail the request.
+  }
+}
+
 export const getURL = (req: IncomingMessage) => new URL(`https://${req.headers.host}${req.url}`)
 
 const wwwFormParser = (body: string) =>
@@ -79,6 +87,7 @@ export const requestHandler: (handler: RouteHandler) => RequestListener = handle
   try {
     data = await parseContent(req)
     result = await handler(req, data)
+    await safeMetric('success')
     res.end(result ? JSON.stringify(result) : undefined)
   } catch (err) {
     console.error(err)
@@ -90,16 +99,18 @@ export const requestHandler: (handler: RouteHandler) => RequestListener = handle
       }
     }
     if (logRequestOnError) {
-      const logRef = await log({
-        time: new Date().toLocaleString('US'),
-        path: req.url,
-        info: String(err),
-        data,
-      })
+      // Persist only sanitized metadata to Vercel function logs; never raw webhook bodies.
+      console.error(
+        JSON.stringify({
+          level: 'error',
+          path: req.url,
+          info: String(err),
+        }),
+      )
+      await safeMetric('errors')
       Sentry.withScope(scope => {
         scope.setExtra('path', req.url)
         scope.setExtra('data', data)
-        scope.setExtra('firebase-log-key', logRef.key)
         Sentry.captureException(err)
       })
     } else {
