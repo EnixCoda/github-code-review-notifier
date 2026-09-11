@@ -7,6 +7,11 @@ workers_dev = true
 REQUIRE_HOOKSHOT = "true"
 ORIGIN_URL = "https://github-code-review-notifier.enix.one"
 
+[[d1_databases]]
+binding = "github_webhook_filter"
+database_name = "github-webhook-filter"
+database_id = "08783b56-b134-4a4e-9952-c0598e44a481"
+
 # ---------------------------------------------------------------------------
 # PRODUCTION (default `wrangler deploy`)
 #   Intercepts the real webhook host (long domain). Only enable AFTER switching
@@ -30,6 +35,11 @@ workers_dev = true
 [env.staging.vars]
 REQUIRE_HOOKSHOT = "true"
 ORIGIN_URL = "https://test.enix.one"
+
+[[env.staging.d1_databases]]
+binding = "github_webhook_filter"
+database_name = "github-webhook-filter"
+database_id = "08783b56-b134-4a4e-9952-c0598e44a481"
 
 [[env.staging.routes]]
 pattern = "test.enix.one/github*"

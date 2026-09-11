@@ -28,15 +28,31 @@ function extractMeta(contentType, bodyText) {
     const j = JSON.parse(payload)
     return {
       repo: (j && j.repository && j.repository.full_name) || 'unknown',
-      action: (j && j.action) ? String(j.action) : '-',
+      action: j && j.action ? String(j.action) : '-',
     }
   } catch (err) {
     return { repo: 'unknown', action: 'unknown' }
   }
 }
 
+// Fire-and-forget: upsert a day-bucketed per-repo/action counter. Never blocks
+// the response, and a D1 failure is logged but cannot break filtering.
+function recordHit(ctx, env, repo, action) {
+  const db = env.github_webhook_filter
+  if (!db) return
+  const day = new Date().toISOString().slice(0, 10)
+  const p = db
+    .prepare(
+      `INSERT INTO hits(day, repo, action, count) VALUES (?, ?, ?, 1)
+       ON CONFLICT(day, repo, action) DO UPDATE SET count = count + 1`,
+    )
+    .bind(day, String(repo), String(action))
+    .run()
+  ctx.waitUntil(p.catch(err => log(`d1-error ${err}`)))
+}
+
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url)
 
     if (url.pathname !== '/github') {
@@ -50,6 +66,7 @@ export default {
     const bodyText = await request.text()
 
     const { repo, action } = extractMeta(contentType, bodyText)
+    recordHit(ctx, env, repo, action)
 
     if (!ALLOWED_EVENTS.includes(event)) {
       log(`DROPPED event=${event} repo=${repo} action=${action} ua=${ua}`)
@@ -64,8 +81,7 @@ export default {
     log(`ALLOWED event=${event} repo=${repo} action=${action} ua=${ua} -> forward`)
 
     // Forward the genuine PR/review event to the origin, preserving method,
-    // body and the `?workspace=` query param. content-length is re-derived by
-    // the runtime for the reconstructed (UTF-8) body.
+    // body and the `?workspace=` query param.
     const origin = new URL(env.ORIGIN_URL)
     const headers = new Headers(request.headers)
     headers.set('host', origin.host)
