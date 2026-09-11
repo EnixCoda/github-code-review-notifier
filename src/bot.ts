@@ -7,7 +7,10 @@ import * as db from './db'
 import { githubUserPageLink, mention, slackLink } from './format'
 
 function generateWebhookURL(host: string, workspace: string) {
-  return `https://${host}${paths.GitHub}?workspace=${workspace}`
+  // Prefer the filtered host (behind the Cloudflare worker) so new webhooks
+  // route onto github-code-review-notifier.enix.one, not bare vercel.app.
+  const webhookHost = process.env.WEBHOOK_HOST || host
+  return `https://${webhookHost}${paths.GitHub}?workspace=${workspace}`
 }
 
 const handleChallenge: RouteHandler = (req, data) => {

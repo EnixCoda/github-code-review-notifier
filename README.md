@@ -1,10 +1,11 @@
 # GitHub Reviewer Notifier on Slack
 
-**⚠️ If you are here because this app stopped working, please replace the `now.sh` with `vercel.app` in your webhook URL.**
+**⚠️ If you are here because this app stopped working, please update your GitHub webhook URL to point at this filtered host** (it keeps the same `workspace` value):
 
 ```diff
 -https://github-code-review-notifier.now.sh/github?workspace=XXX
-+https://github-code-review-notifier.vercel.app/github?workspace=XXX
+-https://github-code-review-notifier.vercel.app/github?workspace=XXX
++https://github-code-review-notifier.enix.one/github?workspace=XXX
 ```
 ---
 
