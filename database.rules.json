@@ -20,7 +20,7 @@
     },
     "logs": {
       ".read": false,
-      ".write": true
+      ".write": false
     },
     ".read": false,
     ".write": false
