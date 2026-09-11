@@ -2,11 +2,13 @@
   "rules": {
     "registered": {
       ".read": true,
-      ".write": true
+      ".write": true,
+      ".indexOn": ["botToken", "botID", "accessToken"]
     },
     "link": {
       ".read": true,
-      ".write": true
+      ".write": true,
+      ".indexOn": ["github", "slack"]
     },
     "metrics": {
       ".read": true,
@@ -16,7 +18,10 @@
       ".read": true,
       ".write": true
     },
-    "logs": false,
+    "logs": {
+      ".read": false,
+      ".write": true
+    },
     ".read": false,
     ".write": false
   }

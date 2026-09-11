@@ -9,6 +9,9 @@
   "main": "build/index.js",
   "author": "EnixCoda",
   "license": "ISC",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
   "dependencies": {
     "@now/node": "^1.0.0",
     "@sentry/node": "^5.7.1",

@@ -67,7 +67,7 @@ export const handleGitHubHook: RouteHandler = async (req, data) => {
       .logUsage({
         ts: Date.now(),
         workspace,
-        event: type,
+        event: typeof type === 'string' ? type : undefined,
         repo: (data && data.repository && data.repository.full_name) || undefined,
         action: data && data.action ? String(data.action) : undefined,
       })
