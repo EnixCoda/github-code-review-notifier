@@ -1,12 +1,8 @@
 # GitHub Reviewer Notifier on Slack
 
-**⚠️ If you are here because this app stopped working, please update your GitHub webhook URL to point at this filtered host** (it keeps the same `workspace` value):
+**GitHub webhook URL:** `https://github-code-review-notifier.enix.one/github?workspace=YOUR_WORKSPACE_ID`
 
-```diff
--https://github-code-review-notifier.now.sh/github?workspace=XXX
--https://github-code-review-notifier.vercel.app/github?workspace=XXX
-+https://github-code-review-notifier.enix.one/github?workspace=XXX
-```
+> If notifications stop, confirm the host above is what your repository's webhook points to — keep the same `?workspace=` value.
 ---
 
 When requested to review pull request on GitHub or when your pull request has been approved, you will be notified on Slack immediately! And a direct link to the Pull Request will be provided in the message. For example,
