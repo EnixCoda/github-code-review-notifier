@@ -1,26 +1,17 @@
-PWD := $(shell pwd)
-WRANGLER := npx wrangler
+.PHONY: dev deploy-staging deploy-prod dry-run
 
-.PHONY: dev deploy-staging deploy-prod secret-staging secret-prod dry-run
+WRANGLER := npx wrangler
 
 dev:
 	$(WRANGLER) dev
 
-# Deploy the staging Worker (targets the staging Vercel origin).
-# Requires: npx wrangler secret put ORIGIN_URL --env staging
+# Deploy the preview/staging Worker (bound to test.enix.one, ORIGIN_URL var).
 deploy-staging:
 	$(WRANGLER) deploy --env staging
 
-# Deploy the production Worker (default environment, targets the prod Vercel origin).
-# Requires: npx wrangler secret put ORIGIN_URL
+# Deploy the production Worker (bound to github-code-review-notifier.enix.one, ORIGIN_URL var).
 deploy-prod:
 	$(WRANGLER) deploy
-
-secret-staging:
-	$(WRANGLER) secret put ORIGIN_URL --env staging
-
-secret-prod:
-	$(WRANGLER) secret put ORIGIN_URL
 
 # Validate the bundle and config without deploying.
 dry-run:

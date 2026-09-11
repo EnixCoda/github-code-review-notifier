@@ -2,70 +2,62 @@
 
 Edge filter that sits in front of the Vercel deployment. It intercepts only the
 GitHub webhook path (`/github*`), drops every event type the app does not handle,
-and forwards only `pull_request` / `pull_request_review` events to the origin.
+and forwards only `pull_request` / `pull_request_review` events to the origin
+(preserving method, body and the `?workspace=` query param).
 
-This removes ~90%+ of Vercel inbound bandwidth (Cloudflare does not bill for
+This removes the bulk of Vercel inbound bandwidth (Cloudflare does not bill for
 bandwidth; the Worker free plan allows 100k requests/day).
 
 ## Layout
 
 - `src/index.js` – the Worker
-- `wrangler.toml` – config with `[env.staging]` and production routes
+- `wrangler.toml` – config with `[env.staging]` (preview) and default (production) routes
+- `Makefile` – deploy helpers
 
 ## How it works
 
 - Paths other than `/github*` pass straight through to Vercel (no Worker quota used).
 - Filtered events return `200` (so GitHub does not retry) and are never forwarded.
-- Genuine PR/review events are forwarded to `ORIGIN_URL`, preserving method, body
-  and the `?workspace=` query param.
+- Genuine PR/review events are forwarded to `ORIGIN_URL`.
 
-## Local dev
+## Domains
 
-```sh
-npx wrangler dev
-```
+- **Production** (default `wrangler deploy`): `github-code-review-notifier.enix.one/github*`,
+  `ORIGIN_URL=https://github-code-review-notifier.enix.one`
+- **Preview/staging** (`wrangler deploy --env staging`): `test.enix.one/github*`,
+  `ORIGIN_URL=https://test.enix.one`
 
-## Staging (via the `preview` branch)
+`ORIGIN_URL` and `REQUIRE_HOOKSHOT` are plain vars in `wrangler.toml` (no secrets needed).
 
-The staging environment uses the `preview` branch: pushing to it makes Vercel create a
-**preview deployment** (its URL is the staging origin), so production is never touched.
-
-1. Push this branch:
-   ```sh
-   git push -u origin preview
-   ```
-   Vercel creates a preview deployment. Copy its URL (e.g. `https://<project>-git-preview-...vercel.app`).
-2. Confirm the preview app works standalone (webhook can reach its `/github`).
-3. Point the staging Worker at that preview URL and deploy:
-   ```sh
-   npx wrangler secret put ORIGIN_URL --env staging   # -> the Vercel preview URL
-   npx wrangler deploy --env staging
-   ```
-   The staging Worker is bound to the `staging.<domain>` route in `wrangler.toml`.
-
-Test staging:
-- `curl -X POST -H "X-GitHub-Event: push" 'https://staging.<domain>/github?workspace=TEST'`
-  → expect `200` `ignored`, and **no** Vercel invocation.
-- `curl -X POST -H "X-GitHub-Event: pull_request" -H "User-Agent: GitHub-Hookshot" ...`
-  → expect it to reach Vercel.
-
-## Production
+## Deploy
 
 ```sh
+# production (default)
 npx wrangler deploy
+
+# preview
+npx wrangler deploy --env staging
 ```
 
-`wrangler.toml` already points `ORIGIN_URL` at `https://test.enix.one` (the assigned
-domain) and binds the route to `test.enix.one/github*` on zone `enix.one`.
+Both Workers are already deployed and verified (filter drops non-PR/review events;
+same-zone forwarding does not loop).
 
 ## Rollback
 
-Set the DNS record to **DNS-only (grey cloud)** so traffic goes straight to Vercel
-as it does today, or remove the route. Instant and safe.
+Change the DNS record back to **DNS-only (grey cloud)** so traffic goes straight to
+Vercel, or remove/disable the Worker route. Instant and safe.
+
+## Merge-to-master note
+
+This branch must only be merged to `master` **together with** adding the app env
+vars to the Vercel project. `master` still carries the deprecated `now.json`; this
+branch migrates it to `vercel.json`, and a deploy built from `vercel.json` needs
+`FIREBASE`, `CLIENT_SECRET`, `SIGNING_SECRET`, `CLIENT_ID`, `VERIFICATION_TOKEN`,
+`SENTRY_PUBLIC_KEY`, `SENTRY_PROJECT_ID` set in Vercel settings, otherwise the
+functions fail at startup. Promoting earlier would break prod.
 
 ## Quota note
 
 Free plan: 100k requests/day (resets midnight UTC). On overflow the route fails
-**open** by default (traffic passes through to Vercel like today). If peaks exceed
-100k/day consistently, move to Workers Paid ($5/mo, 10M req/mo, still no bandwidth
-charge).
+**open** by default (traffic passes through to Vercel). If peaks exceed 100k/day
+consistently, move to Workers Paid ($5/mo, 10M req/mo, still no bandwidth charge).
