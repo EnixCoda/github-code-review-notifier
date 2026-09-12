@@ -12,7 +12,7 @@ type WorkspaceMeta = {
   botID: string
 }
 
-type MetricName = 'success' | 'errors'
+type MetricName = 'success' | 'errors' | 'slack_sent'
 
 type Metric = {
   count: number

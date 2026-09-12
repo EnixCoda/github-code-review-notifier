@@ -4,6 +4,7 @@ import { paths } from '../api/paths'
 import { getURL, RouteHandler } from './'
 import { clientID, clientSecret, verificationToken } from './config'
 import * as db from './db'
+import { incrementMetric } from './db'
 import { githubUserPageLink, mention, slackLink } from './format'
 
 function generateWebhookURL(host: string, workspace: string) {
@@ -41,7 +42,10 @@ export async function botSpeak(
   return Slack.chat
     .postMessage(Object.assign({ as_user: true, token: botToken, channel, text }, extra))
     .then(
-      ({ ok }) => ok,
+      ({ ok }) => {
+        if (ok) incrementMetric('slack_sent').catch(() => {}) // fire-and-forget
+        return ok
+      },
       err => {
         if (err === 'account_inactive' || err.message === 'account_inactive') return false
         throw err
