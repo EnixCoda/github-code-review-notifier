@@ -27,7 +27,7 @@ const LEGACY_HOST_MARKER = '.vercel.app'
 const WEBHOOK_HOST_DEADLINE_UTC = Date.UTC(2026, 11, 31, 23, 59, 59)
 
 const legacyTip = (workspace: string) =>
-  `\n\n💡 To keep the service free, please update your webhook URL to https://github-code-review-notifier.enix.one/github?workspace=${workspace} — this host retires at the end of 2026.`
+  `\n\n💡 Your webhook URL is changing. Your current one retires at the end of 2026, so it will stop delivering notifications. Only the domain changes — update it to https://github-code-review-notifier.enix.one/github?workspace=${workspace} to keep them coming.`
 
 const getHeader = (req: IncomingMessage, key: string) =>
   req.headers && (req.headers[key] || req.headers[key.toLowerCase()])
@@ -73,7 +73,7 @@ export const handleGitHubHook: RouteHandler = async (req, data) => {
   const pastDeadline = Date.now() > WEBHOOK_HOST_DEADLINE_UTC
   if (legacyHost && pastDeadline) {
     const err: any = new Error(
-      `This webhook host is retired. Point it to https://github-code-review-notifier.enix.one/github?workspace=${workspace}`,
+      `Your webhook URL is no longer supported — it stops working after 2026-12-31. Update the domain to https://github-code-review-notifier.enix.one/github?workspace=${workspace} to resume notifications.`,
     )
     err.legacyDeadline = true
     throw err
