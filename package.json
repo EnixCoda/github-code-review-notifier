@@ -21,7 +21,7 @@
     "http-proxy": "^1.17.0",
     "slack": "^11.0.2",
     "typescript": "^3.6.4",
-    "uuid": "^3.3.2"
+    "uuid": "^14.0.0"
   },
   "devDependencies": {
     "@sentry/cli": "^1.48.0"
