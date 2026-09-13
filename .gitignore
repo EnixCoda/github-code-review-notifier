@@ -7,3 +7,7 @@ build
 .env
 .vercel
 .env*
+
+# Yarn is the single source of truth for deps; the stale npm lockfile is not
+# tracked so Vercel installs from yarn.lock.
+package-lock.json
