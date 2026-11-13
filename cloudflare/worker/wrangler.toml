@@ -14,19 +14,20 @@ database_id = "08783b56-b134-4a4e-9952-c0598e44a481"
 
 # ---------------------------------------------------------------------------
 # PRODUCTION (default `wrangler deploy`)
-#   Intercepts the real webhook host (long domain). Only enable AFTER switching
-#   `github-code-review-notifier.enix.one` to proxied in Cloudflare.
-#   Subrequests a Worker makes to its own zone bypass this route (no loop).
+#   Intercepts every path on the real webhook host so variants such as
+#   `/github/` or `/GitHub` cannot bypass the filter. Non-webhook paths are
+#   proxied to Vercel unchanged. Subrequests to the same zone bypass this
+#   route, so forwarding does not loop.
 # ---------------------------------------------------------------------------
 [[routes]]
-pattern = "github-code-review-notifier.enix.one/github*"
+pattern = "github-code-review-notifier.enix.one/*"
 zone_name = "enix.one"
 
 # ---------------------------------------------------------------------------
 # PREVIEW / STAGING (`wrangler deploy --env staging`)
 #   Bound to the preview domain, which is already proxied through Cloudflare.
-#   Used to verify filtering + the same-zone forwarding (no-loop) behaviour
-#   before touching prod. Safe: real users' webhooks point at the long domain.
+#   Uses the same all-paths route so path variants are exercised before prod.
+#   Safe: real users' webhooks point at the long domain.
 # ---------------------------------------------------------------------------
 [env.staging]
 name = "github-webhook-filter-staging"
@@ -42,5 +43,5 @@ database_name = "github-webhook-filter"
 database_id = "08783b56-b134-4a4e-9952-c0598e44a481"
 
 [[env.staging.routes]]
-pattern = "test.enix.one/github*"
+pattern = "test.enix.one/*"
 zone_name = "enix.one"

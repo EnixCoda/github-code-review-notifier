@@ -13,6 +13,16 @@ function log(msg) {
   console.log(`[filter] ${msg}`)
 }
 
+// Normalize path variants so `/github/`, `/GitHub`, `//github` and similar
+// spellings cannot bypass the filter. `/github/extra` is not a webhook path.
+function isWebhookPath(pathname) {
+  const normalized = pathname
+    .replace(/^\/+/, '/')
+    .replace(/\/+$/, '')
+    .toLowerCase()
+  return normalized === '/github'
+}
+
 // Resolve the hook action and repo (github.com/<owner>/<name>) from the body.
 function extractMeta(contentType, bodyText) {
   if (!bodyText || bodyText.length > MAX_REPO_PARSE) {
@@ -55,7 +65,7 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url)
 
-    if (url.pathname !== '/github') {
+    if (!isWebhookPath(url.pathname)) {
       log(`pass-through ${url.pathname}`)
       return fetch(request)
     }
@@ -81,12 +91,13 @@ export default {
     log(`ALLOWED event=${event} repo=${repo} action=${action} ua=${ua} -> forward`)
 
     // Forward the genuine PR/review event to the origin, preserving method,
-    // body and the `?workspace=` query param.
+    // body and the `?workspace=` query param. Use the canonical `/github`
+    // path so variants such as `/GitHub/` reach the same origin route.
     const origin = new URL(env.ORIGIN_URL)
     const headers = new Headers(request.headers)
     headers.set('host', origin.host)
     headers.delete('content-length')
-    const upstream = new Request(`${origin.origin}${url.pathname}${url.search}`, {
+    const upstream = new Request(`${origin.origin}/github${url.search}`, {
       method: request.method,
       headers,
       body: bodyText,

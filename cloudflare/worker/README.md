@@ -1,8 +1,9 @@
 # GitHub webhook filter (Cloudflare Worker)
 
-Edge filter that sits in front of the Vercel deployment. It intercepts only the
-GitHub webhook path (`/github*`), drops every event type the app does not handle,
-and forwards only `pull_request` / `pull_request_review` events to the origin
+Edge filter that sits in front of the Vercel deployment. It intercepts the
+GitHub webhook endpoint (`/github`, including variants such as `/github/`,
+`//github` and `/GitHub`), drops every event type the app does not handle, and
+forwards only `pull_request` / `pull_request_review` events to the origin
 (preserving method, body and the `?workspace=` query param).
 
 This removes the bulk of Vercel inbound bandwidth (Cloudflare does not bill for
@@ -16,15 +17,20 @@ bandwidth; the Worker free plan allows 100k requests/day).
 
 ## How it works
 
-- Paths other than `/github*` pass straight through to Vercel (no Worker quota used).
+- The Worker route covers **all paths** on the webhook domain, so spelling
+  variants (`/github/`, `/GitHub`, `//github`) cannot bypass the filter.
+- Non-webhook paths are proxied to Vercel unchanged. Because the route is `/*`,
+  every request on the domain counts toward the Worker free quota (100k/day),
+  not just `/github`.
 - Filtered events return `200` (so GitHub does not retry) and are never forwarded.
-- Genuine PR/review events are forwarded to `ORIGIN_URL`.
+- Genuine PR/review events are forwarded to `ORIGIN_URL` on the canonical
+  `/github` path.
 
 ## Domains
 
-- **Production** (default `wrangler deploy`): `github-code-review-notifier.enix.one/github*`,
+- **Production** (default `wrangler deploy`): `github-code-review-notifier.enix.one/*`,
   `ORIGIN_URL=https://github-code-review-notifier.enix.one`
-- **Preview/staging** (`wrangler deploy --env staging`): `test.enix.one/github*`,
+- **Preview/staging** (`wrangler deploy --env staging`): `test.enix.one/*`,
   `ORIGIN_URL=https://test.enix.one`
 
 `ORIGIN_URL` and `REQUIRE_HOOKSHOT` are plain vars in `wrangler.toml` (no secrets needed).
@@ -47,14 +53,12 @@ same-zone forwarding does not loop).
 Change the DNS record back to **DNS-only (grey cloud)** so traffic goes straight to
 Vercel, or remove/disable the Worker route. Instant and safe.
 
-## Merge-to-master note
+## Vercel config note
 
-This branch must only be merged to `master` **together with** adding the app env
-vars to the Vercel project. `master` still carries the deprecated `now.json`; this
-branch migrates it to `vercel.json`, and a deploy built from `vercel.json` needs
-`FIREBASE`, `CLIENT_SECRET`, `SIGNING_SECRET`, `CLIENT_ID`, `VERIFICATION_TOKEN`,
-`SENTRY_PUBLIC_KEY`, `SENTRY_PROJECT_ID` set in Vercel settings, otherwise the
-functions fail at startup. Promoting earlier would break prod.
+`master` uses `vercel.json` (the old `now.json` is gone). The Vercel project must
+keep `FIREBASE`, `CLIENT_SECRET`, `SIGNING_SECRET`, `CLIENT_ID`,
+`VERIFICATION_TOKEN`, `SENTRY_PUBLIC_KEY`, `SENTRY_PROJECT_ID` set in Project
+Settings, otherwise the API functions fail at startup.
 
 ## Quota note
 
