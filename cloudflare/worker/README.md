@@ -2,9 +2,10 @@
 
 Edge filter that sits in front of the Vercel deployment. It intercepts the
 GitHub webhook endpoint (`/github`, including variants such as `/github/`,
-`//github` and `/GitHub`), drops every event type the app does not handle, and
-forwards only `pull_request` / `pull_request_review` events to the origin
-(preserving method, body and the `?workspace=` query param).
+`//github` and `/GitHub`), drops every event type/action the app does not
+handle, and forwards only `pull_request:review_requested` and
+`pull_request_review:submitted` to the origin (preserving method, body and the
+`?workspace=` query param).
 
 This removes the bulk of Vercel inbound bandwidth (Cloudflare does not bill for
 bandwidth; the Worker free plan allows 100k requests/day).
@@ -22,7 +23,13 @@ bandwidth; the Worker free plan allows 100k requests/day).
 - Non-webhook paths are proxied to Vercel unchanged. Because the route is `/*`,
   every request on the domain counts toward the Worker free quota (100k/day),
   not just `/github`.
-- Filtered events return `200` (so GitHub does not retry) and are never forwarded.
+- Filtered events/actions return `200` (so GitHub does not retry) and are never
+  forwarded.
+- Only `pull_request:review_requested` and `pull_request_review:submitted` are
+  forwarded; all other actions of those event types are dropped at the edge.
+- If a payload is too large or unparseable, the action is treated as `unknown`
+  and the Worker fails open for allowed event types, so a legitimate
+  notification is not lost.
 - Genuine PR/review events are forwarded to `ORIGIN_URL` on the canonical
   `/github` path.
 

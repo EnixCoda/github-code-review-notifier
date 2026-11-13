@@ -1,7 +1,15 @@
-const ALLOWED_EVENTS = ['pull_request', 'pull_request_review']
+// Only these event/action pairs are handled by the app. Everything else is
+// dropped at the edge so it never reaches Vercel.
+const ALLOWED_ACTIONS = {
+  pull_request: ['review_requested'],
+  pull_request_review: ['submitted'],
+}
+const ALLOWED_EVENTS = Object.keys(ALLOWED_ACTIONS)
 
-// Guard CPU time: skip payload parsing for very large bodies.
+// Guard CPU time: skip full payload parsing for very large bodies. The action
+// is still extracted from the head so large events can be action-filtered.
 const MAX_REPO_PARSE = 512 * 1024
+const ACTION_HEAD_BYTES = 4096
 
 const text = (status, body, headers = {}) =>
   new Response(body, {
@@ -25,9 +33,20 @@ function isWebhookPath(pathname) {
 
 // Resolve the hook action and repo (github.com/<owner>/<name>) from the body.
 function extractMeta(contentType, bodyText) {
-  if (!bodyText || bodyText.length > MAX_REPO_PARSE) {
+  if (!bodyText) {
     return { repo: 'unknown', action: 'unknown' }
   }
+
+  if (bodyText.length > MAX_REPO_PARSE) {
+    // GitHub puts `action` near the start of JSON payloads. Extract it cheaply;
+    // if it cannot be found, fail open (action=unknown) rather than dropping a
+    // legitimate notification.
+    const match = /"action"\s*:\s*"([^"]+)"/.exec(
+      bodyText.slice(0, ACTION_HEAD_BYTES),
+    )
+    return { repo: 'unknown', action: match ? match[1] : 'unknown' }
+  }
+
   try {
     let payload = bodyText
     if (contentType.includes('application/x-www-form-urlencoded')) {
@@ -86,6 +105,18 @@ export default {
     if (env.REQUIRE_HOOKSHOT === 'true' && !ua.includes('GitHub-Hookshot')) {
       log(`REJECTED ua=${ua} event=${event} repo=${repo} action=${action}`)
       return text(403, 'unexpected sender')
+    }
+
+    // The app only handles these specific actions. `unknown` means the body
+    // was too large/unparseable, so fail open instead of risking a lost event.
+    const allowedActions = ALLOWED_ACTIONS[event]
+    if (
+      allowedActions &&
+      action !== 'unknown' &&
+      !allowedActions.includes(action)
+    ) {
+      log(`DROPPED-ACTION event=${event} repo=${repo} action=${action} ua=${ua}`)
+      return text(200, 'ignored')
     }
 
     log(`ALLOWED event=${event} repo=${repo} action=${action} ua=${ua} -> forward`)
